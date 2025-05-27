@@ -1,0 +1,301 @@
+    <style>
+        .hushmap-container {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 100%;
+            padding: 2rem 5%;
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, #739D8C 100%);
+            min-height: 100vh;
+            color: #333;
+            box-sizing: border-box;
+        }
+
+        .hushmap-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hushmap-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            border-radius: 24px;
+            background: #F5E8C8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(115, 157, 140, 0.3);
+            border: 3px solid white;
+        }
+
+        .hushmap-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #739D8C;
+            margin-bottom: 1rem;
+        }
+
+        .hushmap-tagline {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hushmap-description {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hushmap-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hushmap-feature {
+            background: #F5E8C8;
+            padding: 2rem 1.5rem;
+            border-radius: 16px;
+            border: 2px solid #E5D6AE;
+        }
+
+        .hushmap-feature-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            background: #739D8C;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .hushmap-feature h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #739D8C;
+            margin-bottom: 0.5rem;
+        }
+
+        .hushmap-feature p {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .hushmap-notify-form {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(115, 157, 140, 0.15);
+            border: 2px solid #E5D6AE;
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hushmap-notify-form h3 {
+            font-size: 1.4rem;
+            color: #739D8C;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .hushmap-form-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .hushmap-email-input {
+            flex: 1;
+            padding: 1.2rem;
+            border: 2px solid #E5D6AE;
+            border-radius: 12px;
+            font-size: 1rem;
+            background: #F5E8C8;
+        }
+
+        .hushmap-notify-btn {
+            background: #739D8C;
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .hushmap-notify-btn:hover {
+            background: #628a7a;
+        }
+
+        .hushmap-accessibility-note {
+            background: #B8D2CC;
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 3rem;
+            border: 2px solid #E5D6AE;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hushmap-accessibility-note h4 {
+            color: #739D8C;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .hushmap-accessibility-note p {
+            font-size: 1rem;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .hushmap-footer {
+            font-size: 1rem;
+            color: #888;
+            margin-top: 3rem;
+        }
+
+        .hushmap-success {
+            background: #B8D2CC;
+            color: #2d5a45;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .hushmap-container {
+                padding: 2rem 4%;
+            }
+            .hushmap-title {
+                font-size: 2.5rem;
+            }
+            .hushmap-tagline {
+                font-size: 1.2rem;
+            }
+            .hushmap-form-group {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .hushmap-features {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            .hushmap-notify-form {
+                padding: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hushmap-container {
+                padding: 1.5rem 3%;
+            }
+            .hushmap-title {
+                font-size: 2rem;
+            }
+            .hushmap-tagline {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+
+    <div class="hushmap-container">
+        <div class="hushmap-content">
+            <div class="hushmap-icon">
+                <span style="font-size: 3rem;">📍</span>
+            </div>
+
+            <h1 class="hushmap-title">HushMap</h1>
+            
+            <p class="hushmap-tagline">Find quiet, sensory-friendly spaces designed for neurodiverse comfort</p>
+            
+            <p class="hushmap-description">
+                HushMap helps you discover and share calm, comfortable places with reduced noise, crowds, and harsh lighting. Built with accessibility and neurodiversity in mind.
+            </p>
+
+            <div class="hushmap-features">
+                <div class="hushmap-feature">
+                    <div class="hushmap-feature-icon">🔇</div>
+                    <h3>Quiet Spaces</h3>
+                    <p>Find locations with minimal noise levels and peaceful environments perfect for sensitive individuals</p>
+                </div>
+                
+                <div class="hushmap-feature">
+                    <div class="hushmap-feature-icon">👥</div>
+                    <h3>Crowd Levels</h3>
+                    <p>Check occupancy and spacing information to avoid overwhelming or crowded situations</p>
+                </div>
+                
+                <div class="hushmap-feature">
+                    <div class="hushmap-feature-icon">💡</div>
+                    <h3>Soft Lighting</h3>
+                    <p>Discover comfortable lighting environments that won't cause sensory overload or discomfort</p>
+                </div>
+            </div>
+
+            <div class="hushmap-accessibility-note">
+                <h4>🌟 Designed for Accessibility</h4>
+                <p>HushMap prioritizes clear navigation, high contrast options, reduced animations, and comprehensive screen reader support to ensure everyone can find their perfect space. Every feature is built with neurodiversity and accessibility in mind.</p>
+            </div>
+
+            <div class="hushmap-notify-form">
+                <h3>Get notified when HushMap launches</h3>
+                <div class="hushmap-form-group">
+                    <input 
+                        type="email" 
+                        class="hushmap-email-input"
+                        placeholder="Enter your email address" 
+                        id="hushmap-email"
+                    >
+                    <button class="hushmap-notify-btn" onclick="submitEmail()">
+                        Notify Me
+                    </button>
+                </div>
+                <div id="hushmap-success" class="hushmap-success">
+                    ✅ Thank you! We'll notify you when HushMap is ready.
+                </div>
+            </div>
+
+            <div class="hushmap-footer">
+                <p>© 2025 PharmaTool AI • Coming to iOS App Store Soon</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function submitEmail() {
+            const email = document.getElementById('hushmap-email');
+            const success = document.getElementById('hushmap-success');
+            
+            if (email.value && email.value.includes('@')) {
+                success.style.display = 'block';
+                email.value = '';
+                setTimeout(() => {
+                    success.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
