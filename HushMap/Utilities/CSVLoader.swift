@@ -71,6 +71,7 @@ class CSVLoader {
                     noise: noise,
                     crowds: crowds,
                     lighting: lighting,
+                    comfort: 0.7, // Default comfort for sample data
                     comments: comments,
                     latitude: latitude,
                     longitude: longitude,
@@ -95,6 +96,7 @@ class CSVLoader {
                 noise: 0.2,
                 crowds: 0.3,
                 lighting: 0.5,
+                comfort: 0.9, // High comfort for quiet study environment
                 comments: "Very quiet environment, perfect for studying",
                 latitude: 37.7749,
                 longitude: -122.4194,
@@ -104,6 +106,7 @@ class CSVLoader {
                 noise: 0.5,
                 crowds: 0.6,
                 lighting: 0.9,
+                comfort: 0.6, // Moderate comfort for busy but nice space
                 comments: "Nice open space, moderate crowd on weekends",
                 latitude: 37.7694,
                 longitude: -122.4862,
@@ -113,6 +116,7 @@ class CSVLoader {
                 noise: 0.3,
                 crowds: 0.5,
                 lighting: 0.4,
+                comfort: 0.8, // High comfort for good morning spot
                 comments: "Good morning spot, gets busier after lunch",
                 latitude: 37.7849,
                 longitude: -122.4094,

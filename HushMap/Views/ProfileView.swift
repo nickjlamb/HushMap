@@ -641,53 +641,6 @@ struct ProfileView: View {
                             level: profile.lightingPreference
                         )
                     }
-                    
-                    // Test notification buttons for demo
-                    if profile.confidenceScore > 0.2 {
-                        VStack(spacing: 8) {
-                            Button(action: {
-                                smartNotificationService?.sendTestNotification()
-                            }) {
-                                HStack {
-                                    Image(systemName: "bell.badge")
-                                        .foregroundColor(.hushBackground)
-                                    
-                                    Text("Test Smart Alert")
-                                        .font(.subheadline)
-                                        .foregroundColor(.hushBackground)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.hushBackground, lineWidth: 1)
-                                )
-                            }
-                            
-                            Button(action: {
-                                smartNotificationService?.sendDemoSensoryWarning()
-                            }) {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle")
-                                        .foregroundColor(.orange)
-                                    
-                                    Text("Demo Sensory Warning")
-                                        .font(.subheadline)
-                                        .foregroundColor(.orange)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.orange, lineWidth: 1)
-                                )
-                            }
-                        }
-                    }
                 }
                 .padding()
                 .background(

@@ -42,20 +42,68 @@ class SensoryProfileService: ObservableObject {
         // Ensure user has a profile
         let profile = user.ensureSensoryProfile()
         
-        // Update the profile with new data
+        // Update the profile with new data using simple counting method
         profile.updateFromReport(report)
+        
+        // Now perform the intelligent comfort-based analysis
+        updatePreferencesBasedOnComfort(for: user, profile: profile)
         
         // Save changes
         do {
             try modelContext.save()
             currentProfile = profile
-            print("Updated sensory profile: confidence \(profile.confidenceScore)")
+            print("🧠 Updated sensory profile with comfort-based learning: confidence \(profile.confidenceScore)")
         } catch {
             print("Error updating sensory profile: \(error)")
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.isLearning = false
+        }
+    }
+    
+    /// SMART LEARNING: Analyze comfort correlations to learn true preferences
+    private func updatePreferencesBasedOnComfort(for user: User, profile: SensoryProfile) {
+        // Get all reports for this user
+        let allReports = user.reports
+        
+        guard allReports.count >= 2 else {
+            print("🧠 Not enough reports for comfort-based learning (need 2+, have \(allReports.count))")
+            return
+        }
+        
+        // Separate comfortable vs uncomfortable experiences
+        let comfortableReports = allReports.filter { $0.comfort >= 0.6 } // Comfortable experiences
+        let uncomfortableReports = allReports.filter { $0.comfort <= 0.4 } // Uncomfortable experiences
+        
+        print("🧠 Analyzing \(comfortableReports.count) comfortable vs \(uncomfortableReports.count) uncomfortable reports")
+        
+        // If we have comfortable experiences, learn from them
+        if comfortableReports.count >= 1 {
+            let avgNoiseComfortable = comfortableReports.map { $0.noise }.reduce(0, +) / Double(comfortableReports.count)
+            let avgCrowdsComfortable = comfortableReports.map { $0.crowds }.reduce(0, +) / Double(comfortableReports.count)
+            let avgLightingComfortable = comfortableReports.map { $0.lighting }.reduce(0, +) / Double(comfortableReports.count)
+            
+            // These averages from comfortable experiences ARE the user's preferences
+            profile.noisePreference = min(1.0, max(0.0, avgNoiseComfortable))
+            profile.crowdsPreference = min(1.0, max(0.0, avgCrowdsComfortable))
+            profile.lightingPreference = min(1.0, max(0.0, avgLightingComfortable))
+            
+            print("🧠 Learned preferences from comfort: noise=\(String(format: "%.2f", profile.noisePreference)), crowds=\(String(format: "%.2f", profile.crowdsPreference)), lighting=\(String(format: "%.2f", profile.lightingPreference))")
+        }
+        
+        // Increase confidence if we have good data distribution
+        if comfortableReports.count >= 2 && allReports.count >= 3 {
+            // Boost confidence for having diverse comfort data
+            let comfortVariance = allReports.map { $0.comfort }.reduce(0) { sum, comfort in
+                sum + abs(comfort - 0.5)
+            } / Double(allReports.count)
+            
+            // More variance in comfort ratings = more reliable learning
+            let varianceBonus = min(0.3, comfortVariance * 0.6)
+            profile.confidenceScore = min(1.0, profile.confidenceScore + varianceBonus)
+            
+            print("🧠 Boosted confidence by \(String(format: "%.2f", varianceBonus)) due to comfort variance")
         }
     }
     

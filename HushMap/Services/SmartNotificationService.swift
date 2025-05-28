@@ -33,17 +33,22 @@ class SmartNotificationService: NSObject, ObservableObject {
     // MARK: - Setup and Permissions
     
     func setupNotifications() {
-        requestNotificationPermission()
+        Task { 
+            await requestNotificationPermission()
+        }
         requestLocationPermission()
     }
     
-    private func requestNotificationPermission() {
-        notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            DispatchQueue.main.async {
-                if granted {
-                    print("Notification permission granted")
-                } else {
-                    print("Notification permission denied: \(error?.localizedDescription ?? "Unknown error")")
+    func requestNotificationPermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                DispatchQueue.main.async {
+                    if granted {
+                        print("Notification permission granted")
+                    } else {
+                        print("Notification permission denied: \(error?.localizedDescription ?? "Unknown error")")
+                    }
+                    continuation.resume(returning: granted)
                 }
             }
         }

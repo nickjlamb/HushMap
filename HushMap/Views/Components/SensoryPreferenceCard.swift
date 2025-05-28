@@ -65,9 +65,10 @@ struct CircularProgressView: View {
                 .animation(.easeInOut(duration: 0.5), value: progress)
             
             Text("\(Int(progress * 100))%")
-                .font(.caption2)
-                .fontWeight(.bold)
+                .font(.system(size: 8, weight: .bold, design: .rounded))
                 .foregroundColor(.hushBackground)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
         }
     }
 }

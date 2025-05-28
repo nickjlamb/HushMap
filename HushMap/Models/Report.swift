@@ -8,6 +8,7 @@ class Report {
     var noise: Double
     var crowds: Double
     var lighting: Double
+    var comfort: Double // 0.0 = very uncomfortable, 1.0 = very comfortable
     var comments: String
     var timestamp: Date
     var latitude: Double
@@ -17,11 +18,12 @@ class Report {
     // Relationship to user (owner of the report)
     @Relationship(inverse: \User.reports) var user: User?
 
-    init(noise: Double, crowds: Double, lighting: Double, comments: String, latitude: Double, longitude: Double, timestamp: Date = .now) {
+    init(noise: Double, crowds: Double, lighting: Double, comfort: Double, comments: String, latitude: Double, longitude: Double, timestamp: Date = .now) {
         self.id = UUID()
         self.noise = noise
         self.crowds = crowds
         self.lighting = lighting
+        self.comfort = comfort
         self.comments = comments
         self.latitude = latitude
         self.longitude = longitude

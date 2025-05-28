@@ -11,6 +11,7 @@ struct AddReportView: View {
     @State private var noiseLevel: Double = 0.5
     @State private var crowdLevel: Double = 0.5
     @State private var lightingLevel: Double = 0.5
+    @State private var comfortLevel: Double = 0.5
     @State private var comments: String = ""
     @State private var showToast: Bool = false
     @State private var showAudioMeter = false
@@ -104,6 +105,10 @@ struct AddReportView: View {
                             SliderWithLabel(title: "Crowds", value: $crowdLevel)
                             SliderWithLabel(title: "Lighting", value: $lightingLevel)
                         }
+                        
+                        Section(header: Text("Your Experience")) {
+                            SliderWithLabel(title: "Comfort", value: $comfortLevel)
+                        }
 
                         Section(header: Text("Optional Comments")) {
                             TextEditor(text: $comments)
@@ -163,8 +168,10 @@ struct AddReportView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                             .transition(.move(edge: .bottom))
-                            .padding(.bottom, 40)
+                            .padding(.bottom, 120)
                             .accessibilityAddTraits(.isStaticText)
+                        Spacer()
+                            .frame(height: 60)
                     }
                     .animation(.easeInOut, value: showToast)
                 }
@@ -211,6 +218,7 @@ struct AddReportView: View {
             noise: noiseLevel,
             crowds: crowdLevel,
             lighting: lightingLevel,
+            comfort: comfortLevel,
             comments: comments,
             latitude: location.latitude,
             longitude: location.longitude
@@ -264,6 +272,7 @@ struct AddReportView: View {
         noiseLevel = 0.5
         crowdLevel = 0.5
         lightingLevel = 0.5
+        comfortLevel = 0.5
         comments = ""
         
         // Stop audio analysis
@@ -292,6 +301,8 @@ struct SliderWithLabel: View {
             return "person.2"
         case "Lighting":
             return "lightbulb"
+        case "Comfort":
+            return "heart.fill"
         default:
             return "slider.horizontal.3"
         }

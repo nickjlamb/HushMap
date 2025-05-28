@@ -57,8 +57,19 @@ class SensoryProfile {
     }
     
     private func updatePreferences() {
-        // Convert average ratings to preference scores
-        // Higher average ratings suggest higher tolerance (less sensitivity)
+        // TODO: CRITICAL FIX NEEDED
+        // Current logic is WRONG - it assumes reported levels = preferences
+        // Should be: analyze comfort correlation with sensory levels
+        // 
+        // Correct logic should be:
+        // 1. Find reports where comfort > 0.6 (comfortable experiences)
+        // 2. Calculate average sensory levels from those comfortable reports
+        // 3. Those averages become the preferred levels
+        //
+        // Example: User reports high noise (8/10) but low comfort (2/10)
+        // = User dislikes high noise, prefers quieter environments
+        
+        // TEMPORARY: Keep existing flawed logic until comfort data analysis is implemented
         noisePreference = min(1.0, max(0.0, averageNoiseRating))
         crowdsPreference = min(1.0, max(0.0, averageCrowdsRating))
         lightingPreference = min(1.0, max(0.0, averageLightingRating))

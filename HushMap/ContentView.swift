@@ -21,12 +21,9 @@ struct ContentView: View {
 
                 AddReportView()
                     .tag(2)
-
-                ReportHistoryView()
-                    .tag(3)
                     
                 ProfileView()
-                    .tag(4)
+                    .tag(3)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
@@ -64,8 +61,7 @@ struct CustomTabBar: View {
         TabItem(icon: "map", title: "Map", tag: 0),
         TabItem(icon: "location.magnifyingglass", title: "Nearby", tag: 1),
         TabItem(icon: "plus.circle.fill", title: "Report", tag: 2),
-        TabItem(icon: "clock", title: "History", tag: 3),
-        TabItem(icon: "person.circle", title: "Profile", tag: 4)
+        TabItem(icon: "person.circle", title: "Profile", tag: 3)
     ]
     
     var body: some View {
