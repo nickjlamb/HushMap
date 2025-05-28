@@ -91,10 +91,8 @@ struct HomeMapView: View {
             )
             .ignoresSafeArea(.all, edges: .all)
             .onAppear {
-                // Check location services before requesting permission
-                if locationManager.checkLocationServices() {
-                    locationManager.requestLocationPermission()
-                }
+                // Request location permission (checks services asynchronously)
+                locationManager.requestLocationPermission()
                 
                 // Listen for coordinate centering notifications from Nearby view
                 NotificationCenter.default.addObserver(

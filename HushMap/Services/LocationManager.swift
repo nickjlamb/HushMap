@@ -20,8 +20,19 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     // This needs to be called after init, not during init
     func requestLocationPermission() {
-        // This call can be made from anywhere, including HomeMapView.onAppear
-        locationManager.requestWhenInUseAuthorization()
+        // Check location services asynchronously before requesting permission
+        Task {
+            let servicesEnabled = CLLocationManager.locationServicesEnabled()
+            
+            await MainActor.run {
+                if !servicesEnabled {
+                    self.locationError = AppError.location(.serviceDisabled)
+                } else {
+                    // Only request permission if services are enabled
+                    self.locationManager.requestWhenInUseAuthorization()
+                }
+            }
+        }
     }
     
     // Called by delegate when authorization changes
@@ -80,14 +91,5 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 self.locationError = AppError.general(.unexpectedError)
             }
         }
-    }
-    
-    // Helper method to check if location services are enabled
-    func checkLocationServices() -> Bool {
-        guard CLLocationManager.locationServicesEnabled() else {
-            locationError = AppError.location(.serviceDisabled)
-            return false
-        }
-        return true
     }
 }
