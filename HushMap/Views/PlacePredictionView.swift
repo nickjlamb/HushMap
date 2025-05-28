@@ -7,6 +7,8 @@ struct PlacePredictionView: View {
     @State private var prediction: VenuePredictionResponse?
     @State private var isLoading = false
     @State private var showVisitDetails = false
+    @State private var predictionError: AppError?
+    @StateObject private var errorState = ErrorStateViewModel()
     
     // Visit details state
     @State private var selectedDay: String = {
@@ -420,19 +422,46 @@ struct PlacePredictionView: View {
         
         // Generate AI-powered prediction
         Task {
-            // Add a brief delay for UX
-            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-            
-            let generatedPrediction = await self.predictionService.generateSensoryPrediction(
-                for: self.place,
-                time: visitDate,
-                weather: self.selectedWeather,
-                userReportsSummary: self.userReportsSummary
-            )
-            
-            await MainActor.run {
-                self.prediction = generatedPrediction
-                self.isLoading = false
+            do {
+                // Add a brief delay for UX
+                try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+                
+                let generatedPrediction = await self.predictionService.generateSensoryPrediction(
+                    for: self.place,
+                    time: visitDate,
+                    weather: self.selectedWeather,
+                    userReportsSummary: self.userReportsSummary
+                )
+                
+                await MainActor.run {
+                    self.prediction = generatedPrediction
+                    self.predictionError = nil
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    // Show error but don't block the UI - prediction service has fallbacks
+                    self.predictionError = error as? AppError ?? AppError.general(.unexpectedError)
+                    self.isLoading = false
+                    
+                    // Still try to show a basic prediction if AI failed
+                    if self.prediction == nil {
+                        // Create a basic fallback prediction
+                        self.prediction = VenuePredictionResponse(
+                            id: UUID(),
+                            venueName: place.name,
+                            venueType: "Unknown",
+                            summary: "Unable to generate detailed prediction. Please check your connection and try again.",
+                            interestingFact: "",
+                            noiseLevel: .moderate,
+                            crowdLevel: .moderate,
+                            lightingLevel: .moderate,
+                            confidence: .low,
+                            timestamp: Date(),
+                            coordinate: place.coordinate
+                        )
+                    }
+                }
             }
         }
     }

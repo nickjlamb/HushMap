@@ -7,6 +7,7 @@ import Combine
 
 struct HomeMapView: View {
     @StateObject private var locationManager = LocationManager()
+    @StateObject private var errorState = ErrorStateViewModel()
     @Query private var reports: [Report]
     // Note: Removed Apple Maps position state - using currentCoordinate for Google Maps
     @State private var useClustering = true
@@ -55,7 +56,20 @@ struct HomeMapView: View {
             Color.hushMapShape.opacity(0.95)
                 .ignoresSafeArea(.all, edges: .all)
             
-            GoogleMapView(
+            // Show error state if there's a location error
+            if let locationError = locationManager.locationError {
+                ErrorStateView(
+                    error: locationError,
+                    retryAction: {
+                        locationManager.requestLocationPermission()
+                    },
+                    settingsAction: {
+                        openAppSettings()
+                    }
+                )
+                .transition(.opacity)
+            } else {
+                GoogleMapView(
                 mapType: $googleMapType,
                 cameraPosition: $currentCoordinate,
                 pins: filteredPins,
@@ -77,8 +91,10 @@ struct HomeMapView: View {
             )
             .ignoresSafeArea(.all, edges: .all)
             .onAppear {
-                // Request location permission when view appears
-                locationManager.requestLocationPermission()
+                // Check location services before requesting permission
+                if locationManager.checkLocationServices() {
+                    locationManager.requestLocationPermission()
+                }
                 
                 // Listen for coordinate centering notifications from Nearby view
                 NotificationCenter.default.addObserver(
@@ -115,7 +131,17 @@ struct HomeMapView: View {
                     .padding(.top, 8) // Reduced padding to move nav bar up
                 Spacer()
             }
+            }
         }
+        .errorAlert(
+            errorState: errorState,
+            retryAction: {
+                locationManager.requestLocationPermission()
+            },
+            settingsAction: {
+                openAppSettings()
+            }
+        )
         .sheet(isPresented: $showAbout) {
             AboutView()
         }

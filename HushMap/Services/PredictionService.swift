@@ -23,9 +23,13 @@ class PredictionService {
         print("🤖 Using AI to generate prediction for \(place.name) at \(timeOfDay)")
         
         
+        // Try AI prediction first, fallback to rule-based if it fails
+        let aiPrediction: String
+        let interestingFact: String
+        
         do {
             // Use AI to generate comprehensive sensory prediction
-            let aiPrediction = try await openAIService.generateSensoryPrediction(
+            aiPrediction = try await openAIService.generateSensoryPrediction(
                 venueName: place.name,
                 venueType: inferVenueType(from: place.name),
                 dayOfWeek: dayOfWeek,
@@ -35,7 +39,6 @@ class PredictionService {
             )
             
             // Try to generate interesting fact
-            let interestingFact: String
             do {
                 interestingFact = try await openAIService.generateInterestingFact(venueName: place.name)
             } catch {

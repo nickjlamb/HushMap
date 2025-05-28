@@ -5,6 +5,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var lastLocation: CLLocationCoordinate2D?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var locationError: AppError?
     
     // Workaround for potential warnings about locationServicesEnabled
     @Published var isLocationReady = false
@@ -28,19 +29,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.authorizationStatus = manager.authorizationStatus
+            self.locationError = nil // Clear any previous errors
             
             switch manager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
                 self.locationManager.startUpdatingLocation()
                 self.isLocationReady = true
-            case .denied, .restricted:
-                print("Location access was denied or restricted")
+            case .denied:
+                self.locationError = AppError.location(.permissionDenied)
+                self.isLocationReady = false
+            case .restricted:
+                self.locationError = AppError.location(.permissionRestricted)
                 self.isLocationReady = false
             case .notDetermined:
                 // Wait for user to make a choice
                 self.isLocationReady = false
             @unknown default:
-                print("Unknown authorization status")
+                self.locationError = AppError.general(.unexpectedError)
                 self.isLocationReady = false
             }
         }
@@ -51,6 +56,38 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let location = locations.last else { return }
             self?.lastLocation = location.coordinate
+            self?.locationError = nil // Clear any location errors on success
         }
+    }
+    
+    // Called by delegate when location update fails
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            if let clError = error as? CLError {
+                switch clError.code {
+                case .denied:
+                    self.locationError = AppError.location(.permissionDenied)
+                case .locationUnknown:
+                    self.locationError = AppError.location(.locationUnavailable)
+                case .network:
+                    self.locationError = AppError.network(.noConnection)
+                default:
+                    self.locationError = AppError.location(.locationUnavailable)
+                }
+            } else {
+                self.locationError = AppError.general(.unexpectedError)
+            }
+        }
+    }
+    
+    // Helper method to check if location services are enabled
+    func checkLocationServices() -> Bool {
+        guard CLLocationManager.locationServicesEnabled() else {
+            locationError = AppError.location(.serviceDisabled)
+            return false
+        }
+        return true
     }
 }

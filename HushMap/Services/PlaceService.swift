@@ -64,6 +64,17 @@ class PlaceService {
             DispatchQueue.main.async {
                 if let error = error {
                     print("❌ Places API Network error: \(error)")
+                    // Check for specific network errors
+                    if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .notConnectedToInternet, .networkConnectionLost:
+                            print("❌ No internet connection")
+                        case .timedOut:
+                            print("❌ Request timed out")
+                        default:
+                            print("❌ Network error: \(urlError.localizedDescription)")
+                        }
+                    }
                     completion([])
                     return
                 }

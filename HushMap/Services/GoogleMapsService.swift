@@ -13,6 +13,7 @@ class GoogleMapsService {
             print("⚠️ WARNING: Please set your Google Maps API key in Config-Local.xcconfig")
             print("📝 Get your API key from: https://console.cloud.google.com/")
             print("🔗 Enable Maps SDK for iOS")
+            print("💡 Make sure Config-Local.xcconfig is set in Xcode Project Settings > Build Settings > Configurations")
         } else {
             GMSServices.provideAPIKey(apiKey)
             print("✅ Google Maps configured successfully")

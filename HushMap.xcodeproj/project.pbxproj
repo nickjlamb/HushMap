@@ -156,6 +156,8 @@
 /* Begin XCBuildConfiguration section */
 		BA4AA76C2DC90AF00076E771 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BA4AA7632DC90AEF0076E771 /* HushMap */;
+			baseConfigurationReferenceRelativePath = "Config-Local.xcconfig";
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -220,6 +222,8 @@
 		};
 		BA4AA76D2DC90AF00076E771 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BA4AA7632DC90AEF0076E771 /* HushMap */;
+			baseConfigurationReferenceRelativePath = "Config-Local.xcconfig";
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -277,6 +281,8 @@
 		};
 		BA4AA76F2DC90AF00076E771 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BA4AA7632DC90AEF0076E771 /* HushMap */;
+			baseConfigurationReferenceRelativePath = "Config-Local.xcconfig";
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -308,6 +314,8 @@
 		};
 		BA4AA7702DC90AF00076E771 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BA4AA7632DC90AEF0076E771 /* HushMap */;
+			baseConfigurationReferenceRelativePath = "Config-Local.xcconfig";
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

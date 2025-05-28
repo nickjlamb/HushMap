@@ -127,37 +127,68 @@ class OpenAIService {
     
     private func performRequest(_ request: OpenAIRequest) async throws -> String {
         guard let url = URL(string: baseURL) else {
-            throw OpenAIError.invalidURL
+            throw AppError.api(.openAIError)
         }
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        urlRequest.timeoutInterval = 30 // 30 second timeout
         
         do {
             urlRequest.httpBody = try JSONEncoder().encode(request)
         } catch {
-            throw OpenAIError.encodingError(error)
-        }
-        
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OpenAIError.invalidResponse
-        }
-        
-        if httpResponse.statusCode != 200 {
-            let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("🤖 OpenAI API Error (\(httpResponse.statusCode)): \(errorString)")
-            throw OpenAIError.apiError(httpResponse.statusCode, errorString)
+            throw AppError.api(.openAIError)
         }
         
         do {
-            let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
-            return openAIResponse.choices.first?.message.content ?? "No response generated"
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AppError.network(.invalidResponse)
+            }
+            
+            // Handle specific HTTP status codes
+            switch httpResponse.statusCode {
+            case 200:
+                break // Success
+            case 401:
+                throw AppError.api(.invalidAPIKey)
+            case 429:
+                throw AppError.api(.quotaExceeded)
+            case 500...599:
+                throw AppError.network(.serverUnavailable)
+            default:
+                let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("🤖 OpenAI API Error (\(httpResponse.statusCode)): \(errorString)")
+                throw AppError.api(.openAIError)
+            }
+            
+            do {
+                let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+                return openAIResponse.choices.first?.message.content ?? "No response generated"
+            } catch {
+                print("🤖 OpenAI JSON Decode Error: \(error)")
+                throw AppError.api(.openAIError)
+            }
+            
+        } catch let urlError as URLError {
+            // Handle network-specific errors
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                throw AppError.network(.noConnection)
+            case .timedOut:
+                throw AppError.network(.timeout)
+            default:
+                throw AppError.network(.invalidResponse)
+            }
+        } catch let appError as AppError {
+            // Re-throw app errors as-is
+            throw appError
         } catch {
-            throw OpenAIError.decodingError(error)
+            // Catch any other unexpected errors
+            throw AppError.api(.openAIError)
         }
     }
 }
