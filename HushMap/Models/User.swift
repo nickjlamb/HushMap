@@ -17,6 +17,7 @@ final class User {
     // Relationships
     @Relationship(deleteRule: .cascade) var badges: [Badge] = []
     @Relationship(deleteRule: .cascade) var reports: [Report] = []
+    @Relationship(deleteRule: .cascade) var sensoryProfile: SensoryProfile?
     
     init(name: String, points: Int = 0) {
         self.id = UUID()
@@ -82,5 +83,22 @@ final class User {
         }
         
         return totalPoints
+    }
+    
+    // Ensure user has a sensory profile, create if needed
+    func ensureSensoryProfile() -> SensoryProfile {
+        if let profile = sensoryProfile {
+            return profile
+        } else {
+            let newProfile = SensoryProfile()
+            sensoryProfile = newProfile
+            return newProfile
+        }
+    }
+    
+    // Update sensory profile when user submits a report
+    func updateSensoryProfile(with report: Report) {
+        let profile = ensureSensoryProfile()
+        profile.updateFromReport(report)
     }
 }

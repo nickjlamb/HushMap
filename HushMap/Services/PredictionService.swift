@@ -24,12 +24,9 @@ class PredictionService {
         
         
         // Try AI prediction first, fallback to rule-based if it fails
-        let aiPrediction: String
-        let interestingFact: String
-        
         do {
             // Use AI to generate comprehensive sensory prediction
-            aiPrediction = try await openAIService.generateSensoryPrediction(
+            let aiPrediction = try await openAIService.generateSensoryPrediction(
                 venueName: place.name,
                 venueType: inferVenueType(from: place.name),
                 dayOfWeek: dayOfWeek,
@@ -38,7 +35,14 @@ class PredictionService {
                 placesData: userReportsSummary.isEmpty ? nil : userReportsSummary
             )
             
+            // Validate AI response before parsing
+            guard validateAIResponse(aiPrediction) else {
+                print("⚠️ AI response validation failed, falling back to algorithmic prediction")
+                throw AppError.api(.openAIError)
+            }
+            
             // Try to generate interesting fact
+            let interestingFact: String
             do {
                 interestingFact = try await openAIService.generateInterestingFact(venueName: place.name)
             } catch {
@@ -49,6 +53,12 @@ class PredictionService {
             // Parse AI response to extract sensory levels and clean summary
             let (noise, crowd, lighting, cleanedSummary) = parseAISensoryLevels(from: aiPrediction)
             
+            // Validate parsed levels
+            guard validateParsedLevels(noise: noise, crowd: crowd, lighting: lighting) else {
+                print("⚠️ Parsed AI levels validation failed, falling back to algorithmic prediction")
+                throw AppError.api(.openAIError)
+            }
+            
             return VenuePredictionResponse(
                 id: UUID(),
                 venueName: place.name,
@@ -58,7 +68,7 @@ class PredictionService {
                 noiseLevel: noise,
                 crowdLevel: crowd,
                 lightingLevel: lighting,
-                confidence: .high, // AI predictions are generally high confidence
+                confidence: .high, // AI predictions are high confidence when successful
                 timestamp: Date(),
                 coordinate: place.coordinate
             )
@@ -77,10 +87,84 @@ class PredictionService {
                 userReportsSummary: userReportsSummary
             )
             
-            var prediction = generatePrediction(for: request, coordinate: place.coordinate, targetTime: time)
-            prediction.coordinate = place.coordinate
-            return prediction
+            let originalPrediction = generatePrediction(for: request, coordinate: place.coordinate, targetTime: time)
+            
+            // Create a new prediction with fallback modifications
+            let fallbackNote = "Prediction based on venue analysis (AI unavailable). "
+            let adjustedConfidence: ConfidenceLevel
+            switch originalPrediction.confidence {
+            case .high: adjustedConfidence = .medium
+            case .medium: adjustedConfidence = .low
+            case .low: adjustedConfidence = .low
+            }
+            
+            var fallbackPrediction = VenuePredictionResponse(
+                id: originalPrediction.id,
+                venueName: originalPrediction.venueName,
+                venueType: originalPrediction.venueType,
+                summary: fallbackNote + originalPrediction.summary,
+                interestingFact: originalPrediction.interestingFact,
+                noiseLevel: originalPrediction.noiseLevel,
+                crowdLevel: originalPrediction.crowdLevel,
+                lightingLevel: originalPrediction.lightingLevel,
+                confidence: adjustedConfidence,
+                timestamp: originalPrediction.timestamp
+            )
+            fallbackPrediction.coordinate = place.coordinate
+            return fallbackPrediction
         }
+    }
+    
+    // MARK: - AI Response Validation
+    
+    // Validate AI response format and content
+    private func validateAIResponse(_ response: String) -> Bool {
+        // Check minimum length
+        guard response.count >= 50 else {
+            print("⚠️ AI response too short: \(response.count) characters")
+            return false
+        }
+        
+        // Check for required structured format
+        let lowercaseResponse = response.lowercased()
+        let hasNoiseLevel = lowercaseResponse.contains("noise_level:")
+        let hasCrowdLevel = lowercaseResponse.contains("crowd_level:")
+        let hasLightingLevel = lowercaseResponse.contains("lighting_level:")
+        
+        guard hasNoiseLevel && hasCrowdLevel && hasLightingLevel else {
+            print("⚠️ AI response missing required structured format")
+            return false
+        }
+        
+        // Check for common AI failure patterns
+        let failurePatterns = [
+            "i cannot", "i can't", "i'm unable", "i don't have access",
+            "as an ai", "i'm an ai", "sorry", "error", "unavailable"
+        ]
+        
+        for pattern in failurePatterns {
+            if lowercaseResponse.contains(pattern) {
+                print("⚠️ AI response contains failure pattern: \(pattern)")
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    // Validate parsed sensory levels are reasonable
+    private func validateParsedLevels(noise: SensoryLevel, crowd: SensoryLevel, lighting: SensoryLevel) -> Bool {
+        // All levels should be valid (not .varies which indicates parsing failure)
+        let validLevels: [SensoryLevel] = [.veryLow, .low, .moderate, .high, .veryHigh]
+        
+        guard validLevels.contains(noise),
+              validLevels.contains(crowd),
+              validLevels.contains(lighting) else {
+            print("⚠️ Invalid sensory levels parsed: noise=\(noise), crowd=\(crowd), lighting=\(lighting)")
+            return false
+        }
+        
+        return true
     }
     
     // Helper function to parse AI response and extract sensory levels from structured format

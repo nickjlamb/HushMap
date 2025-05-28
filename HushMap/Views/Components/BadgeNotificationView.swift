@@ -8,7 +8,7 @@ struct BadgeNotificationView: View {
         VStack(spacing: 16) {
             // Badge Icon
             Image(systemName: badge.iconName)
-                .font(.system(size: 64))
+                .font(.system(.largeTitle, design: .default, weight: .regular))
                 .foregroundColor(.purple)
                 .frame(width: 100, height: 100)
                 .background(Circle().fill(Color.purple.opacity(0.2)))

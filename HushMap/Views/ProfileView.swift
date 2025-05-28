@@ -9,8 +9,10 @@ struct ProfileView: View {
     @StateObject private var authService = AuthenticationService.shared
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("smartNotificationsEnabled") private var smartNotificationsEnabled: Bool = true
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
+    @State private var smartNotificationService: SmartNotificationService?
     
     private var currentUser: User {
         // Get the user or create one if needed
@@ -31,6 +33,9 @@ struct ProfileView: View {
                     
                     // Points Section
                     pointsSummaryView
+                    
+                    // Sensory Profile Section
+                    sensoryProfileSectionView
                     
                     // Badges Section
                     badgesSectionView
@@ -136,7 +141,7 @@ struct ProfileView: View {
                 VStack(spacing: 12) {
                     HStack {
                         Image(systemName: "person.circle")
-                            .font(.system(size: 40))
+                            .font(.system(.title, design: .default, weight: .regular))
                             .foregroundColor(.hushBackground)
                         
                         VStack(alignment: .leading, spacing: 4) {
@@ -172,7 +177,8 @@ struct ProfileView: View {
                                     .foregroundColor(.primary)
                                 Text("Sign in with Google")
                                     .foregroundColor(.primary)
-                                    .font(.system(size: 17, weight: .medium))
+                                    .font(.body)
+                                    .fontWeight(.medium)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
@@ -203,13 +209,14 @@ struct ProfileView: View {
             
             HStack(spacing: 16) {
                 Image(systemName: "star.fill")
-                    .font(.system(size: 36))
+                    .font(.largeTitle)
                     .foregroundColor(.yellow)
                     .accessibilityHidden(true)
                 
                 VStack(alignment: .leading) {
                     Text("\(currentUser.points)")
-                        .font(.system(size: 36, weight: .bold))
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
                     Text("Total Points")
@@ -254,7 +261,7 @@ struct ProfileView: View {
     private var emptyBadgesView: some View {
         VStack(spacing: 16) {
             Image(systemName: "trophy")
-                .font(.system(size: 48))
+                .font(.system(.title, design: .default, weight: .regular))
                 .foregroundColor(.gray.opacity(0.6))
             
             Text("Submit reports to earn achievements")
@@ -288,7 +295,7 @@ struct ProfileView: View {
     private func badgeView(_ badge: Badge) -> some View {
         VStack {
             Image(systemName: badge.iconName)
-                .font(.system(size: 36))
+                .font(.largeTitle)
                 .foregroundColor(.purple)
                 .frame(width: 60, height: 60)
                 .background(Circle().fill(Color.purple.opacity(0.2)))
@@ -318,7 +325,7 @@ struct ProfileView: View {
     private func lockedBadgeView(_ type: BadgeType) -> some View {
         VStack {
             Image(systemName: "lock.fill")
-                .font(.system(size: 24))
+                .font(.title2)
                 .foregroundColor(.gray)
                 .frame(width: 60, height: 60)
                 .background(Circle().fill(Color.gray.opacity(0.2)))
@@ -353,6 +360,12 @@ struct ProfileView: View {
                 .foregroundColor(.secondary)
             
             VStack(spacing: 0) {
+                // Smart Notifications option
+                smartNotificationToggle
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
                 // Reset Welcome Screen option
                 Button(action: {
                     hasSeenWelcome = false
@@ -573,6 +586,179 @@ struct ProfileView: View {
         
         // Save changes
         try? modelContext.save()
+    }
+    
+    private var sensoryProfileSectionView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Your Sensory Profile")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            if let profile = currentUser.sensoryProfile {
+                VStack(spacing: 16) {
+                    // Profile confidence indicator
+                    HStack {
+                        Image(systemName: "brain.head.profile")
+                            .font(.title2)
+                            .foregroundColor(.hushBackground)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.overallProfileDescription)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Text("Based on \(profile.totalReports) reports")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        // Confidence progress indicator
+                        CircularProgressView(progress: profile.confidenceScore)
+                    }
+                    
+                    // Sensory preferences grid
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                        SensoryPreferenceCard(
+                            icon: "speaker.wave.2",
+                            title: "Noise",
+                            description: profile.noiseToleranceDescription,
+                            level: profile.noisePreference
+                        )
+                        
+                        SensoryPreferenceCard(
+                            icon: "person.3",
+                            title: "Crowds",
+                            description: profile.crowdsToleranceDescription,
+                            level: profile.crowdsPreference
+                        )
+                        
+                        SensoryPreferenceCard(
+                            icon: "lightbulb",
+                            title: "Lighting",
+                            description: profile.lightingToleranceDescription,
+                            level: profile.lightingPreference
+                        )
+                    }
+                    
+                    // Test notification buttons for demo
+                    if profile.confidenceScore > 0.2 {
+                        VStack(spacing: 8) {
+                            Button(action: {
+                                smartNotificationService?.sendTestNotification()
+                            }) {
+                                HStack {
+                                    Image(systemName: "bell.badge")
+                                        .foregroundColor(.hushBackground)
+                                    
+                                    Text("Test Smart Alert")
+                                        .font(.subheadline)
+                                        .foregroundColor(.hushBackground)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.hushBackground, lineWidth: 1)
+                                )
+                            }
+                            
+                            Button(action: {
+                                smartNotificationService?.sendDemoSensoryWarning()
+                            }) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                    
+                                    Text("Demo Sensory Warning")
+                                        .font(.subheadline)
+                                        .foregroundColor(.orange)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.orange, lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.hushMapLines.opacity(0.1))
+                )
+            } else {
+                // No profile yet
+                VStack(spacing: 12) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(.title, design: .default, weight: .regular))
+                        .foregroundColor(.secondary)
+                    
+                    Text("Building Your Profile")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    Text("Submit more reports to help HushMap learn your sensory preferences and provide personalized recommendations.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.hushMapLines.opacity(0.1))
+                )
+            }
+        }
+    }
+    
+    private var smartNotificationToggle: some View {
+        HStack {
+            Image(systemName: "brain.head.profile")
+                .foregroundColor(.hushBackground)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Smart Sensory Alerts")
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                Text("Get notified when approaching areas that don't match your preferences")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $smartNotificationsEnabled)
+                .onChange(of: smartNotificationsEnabled) { _, newValue in
+                    if let service = smartNotificationService {
+                        if newValue {
+                            service.enableSmartNotifications()
+                        } else {
+                            service.disableSmartNotifications()
+                        }
+                    }
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .onAppear {
+            // Initialize smart notification service if needed
+            if smartNotificationService == nil {
+                smartNotificationService = SmartNotificationService(modelContext: modelContext)
+                if smartNotificationsEnabled {
+                    smartNotificationService?.enableSmartNotifications()
+                }
+            }
+        }
     }
     
     private func clearUserPreferences() {

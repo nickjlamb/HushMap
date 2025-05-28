@@ -5,6 +5,7 @@ struct WelcomeView: View {
     @Binding var hasSeenWelcome: Bool
     @State private var allowLocation: Bool = true
     @StateObject private var locationManager = HushLocationManager()
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ZStack {
@@ -15,7 +16,7 @@ struct WelcomeView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: dynamicTypeSize >= .accessibility1 ? 32 : 24) {
                 Spacer()
 
                 Image("HushMapIcon")
@@ -35,6 +36,7 @@ struct WelcomeView: View {
                     .font(.body)
                     .foregroundColor(.primary.opacity(0.8))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal)
 
                 Toggle("Allow Location Access", isOn: $allowLocation)

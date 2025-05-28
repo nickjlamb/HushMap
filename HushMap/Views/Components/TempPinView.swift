@@ -16,7 +16,8 @@ struct TempPinView: View {
                 .frame(width: 20, height: 20)
             
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption2)
+                .fontWeight(.semibold)
                 .foregroundColor(.hushBackground)
         }
         .shadow(radius: 2)

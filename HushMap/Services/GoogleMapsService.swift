@@ -3,6 +3,7 @@ import GoogleMaps
 
 class GoogleMapsService {
     static let shared = GoogleMapsService()
+    private let deviceCapability = DeviceCapabilityService.shared
     
     private init() {}
     
@@ -16,8 +17,57 @@ class GoogleMapsService {
             print("💡 Make sure Config-Local.xcconfig is set in Xcode Project Settings > Build Settings > Configurations")
         } else {
             GMSServices.provideAPIKey(apiKey)
+            
+            // Apply performance optimizations based on device capability
+            configurePerformanceSettings()
+            
             print("✅ Google Maps configured successfully")
+            print("📱 Performance optimizations applied for \(deviceCapability.performanceTier.rawValue) tier device")
         }
+    }
+    
+    private func configurePerformanceSettings() {
+        // Configure global GMSServices settings based on device performance
+        switch deviceCapability.performanceTier {
+        case .high:
+            // Enable all features for high-performance devices
+            break
+            
+        case .medium:
+            // Moderate optimizations
+            break
+            
+        case .low:
+            // Aggressive optimizations for older devices
+            break
+        }
+    }
+    
+    func optimizeMapView(_ mapView: GMSMapView) {
+        let settings = deviceCapability.mapSettings
+        
+        // Apply performance settings to map view
+        mapView.isBuildingsEnabled = settings.buildingsEnabled
+        mapView.isTrafficEnabled = settings.trafficEnabled
+        
+        // Optimize map settings based on device capability
+        switch deviceCapability.getMarkerOptimizationLevel() {
+        case .none:
+            // Full features enabled
+            mapView.settings.allowScrollGesturesDuringRotateOrZoom = true
+            
+        case .moderate:
+            // Some optimizations
+            mapView.settings.allowScrollGesturesDuringRotateOrZoom = false
+            
+        case .aggressive:
+            // Maximum optimizations for older devices
+            mapView.settings.allowScrollGesturesDuringRotateOrZoom = false
+            mapView.settings.rotateGestures = false
+            mapView.settings.tiltGestures = false
+        }
+        
+        print("🗺️ Map optimized for \(deviceCapability.performanceTier.rawValue) performance tier")
     }
     
     // Map style helper functions for Google Maps types

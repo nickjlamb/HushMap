@@ -61,7 +61,10 @@ struct SignInView: View {
                                     .foregroundColor(.white)
                                 Text("Sign in with Google")
                                     .foregroundColor(.white)
-                                    .font(.system(size: 17, weight: .medium))
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .minimumScaleFactor(0.8)
+                                    .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
@@ -164,7 +167,10 @@ struct CompactSignInView: View {
                                     .foregroundColor(.primary)
                                 Text("Sign in with Google")
                                     .foregroundColor(.primary)
-                                    .font(.system(size: 17, weight: .medium))
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .minimumScaleFactor(0.8)
+                                    .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)

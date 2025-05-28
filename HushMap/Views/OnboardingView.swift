@@ -116,7 +116,7 @@ struct OnboardingStepView: View {
                 VStack(spacing: 20) {
                     // Icon
                     Image(systemName: step.iconName)
-                        .font(.system(size: 60))
+                        .font(.system(.largeTitle, design: .default, weight: .regular))
                         .foregroundColor(step.iconColor)
                         .frame(width: 80, height: 80)
                         .background(

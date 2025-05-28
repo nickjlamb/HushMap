@@ -8,6 +8,8 @@ import Combine
 struct HomeMapView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var errorState = ErrorStateViewModel()
+    @StateObject private var deviceCapability = DeviceCapabilityService.shared
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query private var reports: [Report]
     // Note: Removed Apple Maps position state - using currentCoordinate for Google Maps
     @State private var useClustering = true
@@ -126,7 +128,7 @@ struct HomeMapView: View {
 
             VStack {
                 expandableHeader
-                    .padding(.top, 8) // Reduced padding to move nav bar up
+                    .padding(.top, dynamicTypeSize >= .accessibility1 ? 12 : 8)
                 Spacer()
             }
             }
@@ -243,7 +245,7 @@ struct HomeMapView: View {
             HStack(spacing: 0) {
                 // Expand/Collapse indicator
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                    withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
                         headerExpanded.toggle()
                     }
                 }) {
@@ -261,7 +263,7 @@ struct HomeMapView: View {
                     // Legend button
                     VStack(spacing: 4) {
                         Button(action: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
                                 showLegend.toggle()
                             }
                         }) {
@@ -275,13 +277,15 @@ struct HomeMapView: View {
                             Text("Legend")
                                 .font(.caption2)
                                 .foregroundColor(.hushBackground.opacity(0.8))
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                         }
                     }
                     
                     // Map Style button
                     VStack(spacing: 4) {
                         Button(action: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
                                 cycleMapStyle()
                             }
                         }) {
@@ -295,6 +299,8 @@ struct HomeMapView: View {
                             Text(mapStyleLabel)
                                 .font(.caption2)
                                 .foregroundColor(.hushBackground.opacity(0.8))
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                         }
                     }
                     
@@ -302,7 +308,7 @@ struct HomeMapView: View {
                     VStack(spacing: 4) {
                         Button(action: {
                             // This will expand the header to show filters
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
                                 headerExpanded.toggle()
                             }
                         }) {
@@ -316,6 +322,8 @@ struct HomeMapView: View {
                             Text("Filters")
                                 .font(.caption2)
                                 .foregroundColor(.hushBackground.opacity(0.8))
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                         }
                     }
                     
@@ -334,6 +342,8 @@ struct HomeMapView: View {
                             Text("Search")
                                 .font(.caption2)
                                 .foregroundColor(.hushBackground.opacity(0.8))
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                         }
                     }
                     
@@ -352,6 +362,8 @@ struct HomeMapView: View {
                             Text("About")
                                 .font(.caption2)
                                 .foregroundColor(.hushBackground.opacity(0.8))
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                         }
                     }
                 }
@@ -369,7 +381,7 @@ struct HomeMapView: View {
             
             // Expanded content - filters
             if headerExpanded {
-                VStack(spacing: 12) {
+                VStack(spacing: dynamicTypeSize >= .accessibility1 ? 16 : 12) {
                     Divider()
                         .background(Color.hushBackground.opacity(0.3))
                     
@@ -387,6 +399,13 @@ struct HomeMapView: View {
                                 .foregroundColor(.hushBackground)
                             Toggle("Sort by Most Recent", isOn: $sortByRecent)
                                 .foregroundColor(.hushBackground)
+                            
+                            // Show performance info for debugging
+                            if deviceCapability.performanceTier != .high {
+                                Text("Optimized for \(deviceCapability.performanceTier.rawValue) performance")
+                                    .font(.caption2)
+                                    .foregroundColor(.hushBackground.opacity(0.7))
+                            }
                         }
                         .padding()
                         .background(Color.hushMapLines.opacity(0.8))
@@ -442,7 +461,10 @@ struct HomeMapView: View {
         // Convert to pins
         var pins: [ReportPin] = []
         
-        if useClustering {
+        // Use performance-aware clustering
+        let shouldCluster = useClustering || deviceCapability.shouldUseClustering(for: filtered.count)
+        
+        if shouldCluster {
             // Group by location identifier and create one pin per location
             let groupedReports = Dictionary(grouping: filtered) { $0.locationIdentifier }
             
@@ -480,10 +502,17 @@ struct HomeMapView: View {
         
         // Sort if requested
         if sortByRecent {
-            return pins.sorted { $0.latestTimestamp > $1.latestTimestamp }
-        } else {
-            return pins
+            pins = pins.sorted { $0.latestTimestamp > $1.latestTimestamp }
         }
+        
+        // Limit pins for performance on older devices
+        let maxPins = deviceCapability.mapSettings.maxPinsBeforeClustering
+        if pins.count > maxPins && !shouldCluster {
+            // Take the most recent pins if we're not clustering
+            pins = Array(pins.prefix(maxPins))
+        }
+        
+        return pins
     }
 
 }

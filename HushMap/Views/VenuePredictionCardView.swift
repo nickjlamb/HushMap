@@ -70,7 +70,7 @@ struct SensoryLevelPill: View {
         VStack {
             HStack(spacing: 4) {
                 Image(systemName: iconName)
-                    .font(.system(size: 10))
+                    .font(.caption2)
                 Text(title)
                     .font(.caption2)
             }

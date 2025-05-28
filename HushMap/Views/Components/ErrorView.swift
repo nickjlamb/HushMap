@@ -43,7 +43,7 @@ struct ErrorStateView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: iconName)
-                .font(.system(size: 60))
+                .font(.system(.title, design: .default, weight: .regular))
                 .foregroundColor(.gray)
             
             VStack(spacing: 8) {

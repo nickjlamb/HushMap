@@ -90,7 +90,7 @@ struct NearbyView: View {
     private var locationPermissionView: some View {
         VStack(spacing: 16) {
             Image(systemName: "location.slash")
-                .font(.system(size: 48))
+                .font(.system(.title, design: .default, weight: .regular))
                 .foregroundColor(.secondary)
             
             Text("Location Access Required")
@@ -142,7 +142,7 @@ struct NearbyView: View {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "map")
-                .font(.system(size: 48))
+                .font(.system(.title, design: .default, weight: .regular))
                 .foregroundColor(.secondary)
             
             Text("No Nearby Places Found")

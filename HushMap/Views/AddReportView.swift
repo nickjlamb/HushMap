@@ -5,6 +5,7 @@ import CoreLocation
 struct AddReportView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var locationManager = LocationManager()
+    @StateObject private var audioService = AudioAnalysisService()
     @Query private var users: [User]
     
     @State private var noiseLevel: Double = 0.5
@@ -12,6 +13,7 @@ struct AddReportView: View {
     @State private var lightingLevel: Double = 0.5
     @State private var comments: String = ""
     @State private var showToast: Bool = false
+    @State private var showAudioMeter = false
     
     // Gamification states
     @State private var showBadgeNotification: Bool = false
@@ -26,7 +28,79 @@ struct AddReportView: View {
                     // Form content
                     Form {
                         Section(header: Text("Rate the Sensory Environment")) {
-                            SliderWithLabel(title: "Noise", value: $noiseLevel)
+                            // AI-Enhanced Noise Measurement
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "speaker.wave.3")
+                                        .foregroundColor(.hushBackground)
+                                        .frame(width: 20)
+                                    
+                                    Text("Noise: \(Int(noiseLevel * 10))/10")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        showAudioMeter.toggle()
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "brain.head.profile")
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                            Text("AI Assist")
+                                                .font(.subheadline)
+                                                .fontWeight(.bold)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            LinearGradient(
+                                                colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.8)],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .foregroundColor(.white)
+                                        .cornerRadius(8)
+                                        .shadow(color: .purple.opacity(0.3), radius: 4, x: 0, y: 2)
+                                    }
+                                }
+                                
+                                Slider(value: $noiseLevel, in: 0...1)
+                                    .tint(.hushBackground)
+                                
+                                // Show compact audio meter if enabled
+                                if showAudioMeter {
+                                    VStack(spacing: 8) {
+                                        CompactSoundMeter(audioService: audioService)
+                                        
+                                        if audioService.isListening {
+                                            HStack {
+                                                Button("Use AI Reading") {
+                                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                                        noiseLevel = audioService.getNoiseLevel()
+                                                    }
+                                                }
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.green.opacity(0.2))
+                                                .foregroundColor(.green)
+                                                .cornerRadius(6)
+                                                
+                                                Spacer()
+                                                
+                                                Text(audioService.getNoiseDescription())
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            
                             SliderWithLabel(title: "Crowds", value: $crowdLevel)
                             SliderWithLabel(title: "Lighting", value: $lightingLevel)
                         }
@@ -35,6 +109,16 @@ struct AddReportView: View {
                             TextEditor(text: $comments)
                                 .frame(minHeight: 100)
                         }
+                    }
+                    
+                    // AI Sound Analysis Section
+                    if showAudioMeter {
+                        VStack(spacing: 0) {
+                            SoundMeterView(audioService: audioService)
+                                .padding(.horizontal)
+                                .padding(.top)
+                        }
+                        .background(Color(.systemGroupedBackground))
                     }
                     
                     // Prominent Submit Button
@@ -46,6 +130,8 @@ struct AddReportView: View {
                                 Text("Submit Report")
                                     .font(.subheadline)
                                     .fontWeight(.medium)
+                                    .minimumScaleFactor(0.8)
+                                    .lineLimit(1)
                             }
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -141,6 +227,10 @@ struct AddReportView: View {
         let badgeService = BadgeService(modelContext: modelContext)
         let result = badgeService.processNewReport(newReport, for: currentUser)
         
+        // Update sensory profile with new report data
+        let profileService = SensoryProfileService(modelContext: modelContext)
+        profileService.updateProfile(with: newReport, for: currentUser)
+        
         // Save earned badges and points for notifications
         earnedPoints = result.points
         
@@ -175,6 +265,10 @@ struct AddReportView: View {
         crowdLevel = 0.5
         lightingLevel = 0.5
         comments = ""
+        
+        // Stop audio analysis
+        audioService.stopListening()
+        showAudioMeter = false
 
         // Show toast
         showToast = true
@@ -204,16 +298,23 @@ struct SliderWithLabel: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: iconName)
-                .foregroundColor(.secondary)
-                .frame(width: 24)
-            VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: iconName)
+                    .foregroundColor(.hushBackground)
+                    .frame(width: 20)
+                
                 Text("\(title): \(Int(value * 10))/10")
-                    .accessibilityLabel("\(title) slider")
-                Slider(value: $value)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
             }
+            
+            Slider(value: $value, in: 0...1)
+                .tint(.hushBackground)
         }
+        .padding(.vertical, 4)
     }
 }
 

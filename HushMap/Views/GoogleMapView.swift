@@ -11,6 +11,9 @@ struct GoogleMapView: UIViewRepresentable {
     let onMapTap: ((CLLocationCoordinate2D) -> Void)?
     let onPOITap: ((String, String, CLLocationCoordinate2D) -> Void)?
     
+    @ObservedObject private var deviceCapability = DeviceCapabilityService.shared
+    private let googleMapsService = GoogleMapsService.shared
+    
     func makeUIView(context: Context) -> GMSMapView {
         let camera = GMSCameraPosition.camera(
             withLatitude: cameraPosition.latitude,
@@ -29,10 +32,10 @@ struct GoogleMapView: UIViewRepresentable {
         // Enable POI (Points of Interest) display and fix gesture conflicts
         mapView.settings.consumesGesturesInView = true
         
-        // Make sure POIs are visible by default
-        mapView.isBuildingsEnabled = true
+        // Apply performance optimizations
+        googleMapsService.optimizeMapView(mapView)
         
-        // Add pins to map
+        // Add pins to map with performance consideration
         addPinsToMap(mapView: mapView)
         
         return mapView
@@ -45,10 +48,10 @@ struct GoogleMapView: UIViewRepresentable {
         // Clear existing markers
         mapView.clear()
         
-        // Re-add pins
+        // Re-add pins with performance optimization
         addPinsToMap(mapView: mapView)
         
-        // Update camera if needed
+        // Update camera if needed with performance-based animation duration
         let currentPosition = mapView.camera.target
         if abs(currentPosition.latitude - cameraPosition.latitude) > 0.001 ||
            abs(currentPosition.longitude - cameraPosition.longitude) > 0.001 {
@@ -57,21 +60,42 @@ struct GoogleMapView: UIViewRepresentable {
                 longitude: cameraPosition.longitude,
                 zoom: mapView.camera.zoom
             )
+            
+            // Use device-appropriate animation duration
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(deviceCapability.getCameraTransitionDuration())
             mapView.animate(to: camera)
+            CATransaction.commit()
         }
     }
     
     private func addPinsToMap(mapView: GMSMapView) {
-        // Add report pins
+        let optimizationLevel = deviceCapability.getMarkerOptimizationLevel()
+        
+        // Add report pins with performance optimization
         for pin in pins {
             let marker = GMSMarker()
             marker.position = pin.coordinate
             marker.title = "Sensory Report"
             marker.snippet = "Quality: \(String(format: "%.1f", pin.qualityRating))"
             
-            // Create custom marker icon with quality color
-            let markerView = createMarkerView(for: pin)
-            marker.iconView = markerView
+            // Create marker based on performance level
+            switch optimizationLevel {
+            case .none:
+                // Full custom views with animations
+                let markerView = createMarkerView(for: pin)
+                marker.iconView = markerView
+                
+            case .moderate:
+                // Simplified views, reduced complexity
+                let markerView = createOptimizedMarkerView(for: pin)
+                marker.iconView = markerView
+                
+            case .aggressive:
+                // Basic system markers for maximum performance
+                marker.icon = getBasicMarkerIcon(for: pin)
+            }
+            
             marker.userData = pin
             marker.map = mapView
         }
@@ -83,9 +107,20 @@ struct GoogleMapView: UIViewRepresentable {
             marker.title = tempPin.name
             marker.snippet = "Tap for prediction"
             
-            // Different style for temp pin
-            let markerView = createTempMarkerView()
-            marker.iconView = markerView
+            // Different style for temp pin based on optimization level
+            switch optimizationLevel {
+            case .none:
+                let markerView = createTempMarkerView()
+                marker.iconView = markerView
+                
+            case .moderate:
+                let markerView = createOptimizedTempMarkerView()
+                marker.iconView = markerView
+                
+            case .aggressive:
+                marker.icon = GMSMarker.markerImage(with: .systemPurple)
+            }
+            
             marker.userData = tempPin
             marker.map = mapView
         }
@@ -97,10 +132,14 @@ struct GoogleMapView: UIViewRepresentable {
         markerView.layer.cornerRadius = 16
         markerView.layer.borderWidth = 2
         markerView.layer.borderColor = UIColor.white.cgColor
-        markerView.layer.shadowColor = UIColor.black.cgColor
-        markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        markerView.layer.shadowOpacity = 0.3
-        markerView.layer.shadowRadius = 4
+        
+        // Apply shadows only if device supports it
+        if deviceCapability.shouldEnableShadows() {
+            markerView.layer.shadowColor = UIColor.black.cgColor
+            markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+            markerView.layer.shadowOpacity = 0.3
+            markerView.layer.shadowRadius = 4
+        }
         
         // Add count label if more than one report
         if pin.reportCount > 1 {
@@ -115,25 +154,73 @@ struct GoogleMapView: UIViewRepresentable {
         return markerView
     }
     
+    private func createOptimizedMarkerView(for pin: ReportPin) -> UIView {
+        // Simplified marker for medium performance devices
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 28, height: 28))
+        markerView.backgroundColor = getQualityColor(for: pin.averageSensoryLevel)
+        markerView.layer.cornerRadius = 14
+        markerView.layer.borderWidth = 1
+        markerView.layer.borderColor = UIColor.white.cgColor
+        
+        // No shadows for better performance
+        
+        // Simplified count display
+        if pin.reportCount > 1 {
+            let label = UILabel(frame: markerView.bounds)
+            label.text = "\(pin.reportCount)"
+            label.textAlignment = .center
+            label.font = UIFont.systemFont(ofSize: 10, weight: .bold)
+            label.textColor = .white
+            markerView.addSubview(label)
+        }
+        
+        return markerView
+    }
+    
+    private func getBasicMarkerIcon(for pin: ReportPin) -> UIImage {
+        // Use basic colored markers for maximum performance
+        let color = getQualityColor(for: pin.averageSensoryLevel)
+        return GMSMarker.markerImage(with: color)
+    }
+    
     private func createTempMarkerView() -> UIView {
         let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
         markerView.backgroundColor = UIColor.systemPurple
         markerView.layer.cornerRadius = 16
         markerView.layer.borderWidth = 2
         markerView.layer.borderColor = UIColor.white.cgColor
-        markerView.layer.shadowColor = UIColor.black.cgColor
-        markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        markerView.layer.shadowOpacity = 0.3
-        markerView.layer.shadowRadius = 4
         
-        // Add pulse animation
-        let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
-        pulseAnimation.duration = 1.0
-        pulseAnimation.fromValue = 1.0
-        pulseAnimation.toValue = 1.2
-        pulseAnimation.autoreverses = true
-        pulseAnimation.repeatCount = .infinity
-        markerView.layer.add(pulseAnimation, forKey: "pulse")
+        // Apply shadows only if device supports it
+        if deviceCapability.shouldEnableShadows() {
+            markerView.layer.shadowColor = UIColor.black.cgColor
+            markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+            markerView.layer.shadowOpacity = 0.3
+            markerView.layer.shadowRadius = 4
+        }
+        
+        // Add pulse animation only for high-performance devices
+        if deviceCapability.getMarkerOptimizationLevel() == .none {
+            let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
+            pulseAnimation.duration = 1.0
+            pulseAnimation.fromValue = 1.0
+            pulseAnimation.toValue = 1.2
+            pulseAnimation.autoreverses = true
+            pulseAnimation.repeatCount = .infinity
+            markerView.layer.add(pulseAnimation, forKey: "pulse")
+        }
+        
+        return markerView
+    }
+    
+    private func createOptimizedTempMarkerView() -> UIView {
+        // Simplified temp marker for medium performance devices
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 28, height: 28))
+        markerView.backgroundColor = UIColor.systemPurple
+        markerView.layer.cornerRadius = 14
+        markerView.layer.borderWidth = 1
+        markerView.layer.borderColor = UIColor.white.cgColor
+        
+        // No animations or shadows for better performance
         
         return markerView
     }

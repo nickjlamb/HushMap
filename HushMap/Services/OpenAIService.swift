@@ -125,7 +125,7 @@ class OpenAIService {
         return try await performRequest(request)
     }
     
-    private func performRequest(_ request: OpenAIRequest) async throws -> String {
+    private func performRequest(_ request: OpenAIRequest, retryCount: Int = 0) async throws -> String {
         guard let url = URL(string: baseURL) else {
             throw AppError.api(.openAIError)
         }
@@ -134,7 +134,7 @@ class OpenAIService {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.timeoutInterval = 30 // 30 second timeout
+        urlRequest.timeoutInterval = 15 // Reduced to 15 seconds for faster fallback
         
         do {
             urlRequest.httpBody = try JSONEncoder().encode(request)
@@ -174,12 +174,18 @@ class OpenAIService {
             }
             
         } catch let urlError as URLError {
-            // Handle network-specific errors
+            // Handle network-specific errors with retry logic
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost:
                 throw AppError.network(.noConnection)
             case .timedOut:
-                throw AppError.network(.timeout)
+                // Retry timeout errors once
+                if retryCount < 1 {
+                    print("🔄 OpenAI request timed out, retrying... (attempt \(retryCount + 1))")
+                    return try await performRequest(request, retryCount: retryCount + 1)
+                } else {
+                    throw AppError.network(.timeout)
+                }
             default:
                 throw AppError.network(.invalidResponse)
             }
@@ -187,8 +193,13 @@ class OpenAIService {
             // Re-throw app errors as-is
             throw appError
         } catch {
-            // Catch any other unexpected errors
-            throw AppError.api(.openAIError)
+            // Retry unexpected errors once
+            if retryCount < 1 {
+                print("🔄 Unexpected OpenAI error, retrying... (attempt \(retryCount + 1)): \(error)")
+                return try await performRequest(request, retryCount: retryCount + 1)
+            } else {
+                throw AppError.api(.openAIError)
+            }
         }
     }
 }
