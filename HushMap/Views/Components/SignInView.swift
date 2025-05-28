@@ -90,13 +90,37 @@ struct SignInView: View {
                 
                 Spacer()
                 
-                // Privacy note
-                Text("Your privacy is important to us. We only collect the minimum data needed to provide our service.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 32)
+                // Privacy note and links
+                VStack(spacing: 12) {
+                    Text("Your privacy is important to us. We only collect the minimum data needed to provide our service.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    HStack(spacing: 20) {
+                        Button("Privacy Policy") {
+                            if let url = URL(string: "https://www.pharmatools.ai/privacy-policy") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.hushBackground)
+                        
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Button("Terms of Service") {
+                            if let url = URL(string: "https://www.pharmatools.ai/terms") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.hushBackground)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
             }
             .background(Color.hushMapShape.opacity(0.1))
             .navigationBarHidden(true)

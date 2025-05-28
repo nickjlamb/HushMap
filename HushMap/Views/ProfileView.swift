@@ -390,6 +390,76 @@ struct ProfileView: View {
                 Divider()
                     .padding(.horizontal, 16)
                 
+                // Privacy Policy
+                Button(action: {
+                    if let url = URL(string: "https://www.pharmatools.ai/privacy-policy") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "hand.raised")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Privacy Policy")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Text("How we protect your data and privacy")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.up.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
+                // Terms of Service
+                Button(action: {
+                    if let url = URL(string: "https://www.pharmatools.ai/terms") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "doc.text")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Terms of Service")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Text("Terms and conditions for using HushMap")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.up.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
                 // App Version Info
                 HStack {
                     Image(systemName: "info.circle")

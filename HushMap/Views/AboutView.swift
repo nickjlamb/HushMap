@@ -149,6 +149,29 @@ struct AboutView: View {
                     .accessibilityLabel("Open privacy policy")
                     
                     Button {
+                        if let url = URL(string: "https://www.pharmatools.ai/terms") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.plaintext")
+                                .font(.title3)
+                            Text("Terms of Service")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(buttonBackgroundColor)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open terms of service")
+                    
+                    Button {
                         if let url = URL(string: "mailto:support@pharmatools.ai") {
                             UIApplication.shared.open(url)
                         }
