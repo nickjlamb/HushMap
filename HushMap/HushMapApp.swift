@@ -86,6 +86,9 @@ struct HushMapApp: App {
             if hasSeenWelcome {
                 ContentView()
                     .tint(.hushBackground)
+                    .sheet(isPresented: .constant(!hasCompletedOnboarding && hasSeenWelcome)) {
+                        OnboardingView(isPresented: .constant(!hasCompletedOnboarding))
+                    }
                     .onAppear {
                         // Import sample data if needed
                         let modelContext = sharedModelContainer.mainContext

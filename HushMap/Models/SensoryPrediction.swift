@@ -58,6 +58,18 @@ enum SensoryLevel: String, Codable, CaseIterable {
         case .varies: return .purple
         }
     }
+    
+    // Numeric value for level indicators (1-5)
+    var numericValue: Int {
+        switch self {
+        case .veryLow: return 1
+        case .low: return 2
+        case .moderate: return 3
+        case .high: return 4
+        case .veryHigh: return 5
+        case .varies: return 3
+        }
+    }
 }
 
 // Confidence level for predictions

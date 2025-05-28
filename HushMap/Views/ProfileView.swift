@@ -8,6 +8,7 @@ struct ProfileView: View {
     @Query private var user: [User]
     @StateObject private var authService = AuthenticationService.shared
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
     
@@ -372,6 +373,39 @@ struct ProfileView: View {
                                 .foregroundColor(.primary)
                             
                             Text("Review app introduction and sign-in options")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
+                // Reset Onboarding option
+                Button(action: {
+                    hasCompletedOnboarding = false
+                }) {
+                    HStack {
+                        Image(systemName: "graduationcap")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Show Tutorial")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Text("Learn about sensory levels and predictions")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
