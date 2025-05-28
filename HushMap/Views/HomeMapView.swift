@@ -172,7 +172,7 @@ struct HomeMapView: View {
         
         // Use Places API to find business details at this location
         let placeService = PlaceService()
-        placeService.findPlace(at: coordinate) { [self] place in
+        placeService.findPlace(at: coordinate) { [self] (place: PlaceDetails?) in
             DispatchQueue.main.async {
                 self.isLookingUpLocation = false
                 

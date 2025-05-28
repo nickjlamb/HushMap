@@ -97,6 +97,7 @@ iOSInjectionProject/
 !Info.plist
 !**/Info.plist
 Config-Local.xcconfig
+**/APIKeys.swift
 
 # Claude assistant
 .claude/

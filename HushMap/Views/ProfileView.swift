@@ -421,28 +421,22 @@ struct ProfileView: View {
     private func deleteUserAccount() async {
         isDeleting = true
         
-        do {
-            // Step 1: Delete all user data from SwiftData
-            await deleteAllUserData()
+        // Step 1: Delete all user data from SwiftData
+        await deleteAllUserData()
+        
+        // Step 2: Clear authentication tokens and user defaults
+        await MainActor.run {
+            authService.signOut()
             
-            // Step 2: Clear authentication tokens and user defaults
-            await MainActor.run {
-                authService.signOut()
-                
-                // Clear any additional user preferences
-                UserDefaults.standard.removeObject(forKey: "hasSeenWelcome")
-                
-                // Reset any other app-specific storage
-                clearUserPreferences()
-            }
+            // Clear any additional user preferences
+            UserDefaults.standard.removeObject(forKey: "hasSeenWelcome")
             
-            // Step 3: Show success message (optional)
-            print("Account successfully deleted")
-            
-        } catch {
-            print("Error deleting account: \(error)")
-            // In a production app, you'd show an error alert here
+            // Reset any other app-specific storage
+            clearUserPreferences()
         }
+        
+        // Step 3: Show success message (optional)
+        print("Account successfully deleted")
         
         isDeleting = false
     }

@@ -26,6 +26,12 @@ struct GoogleMapView: UIViewRepresentable {
         mapView.settings.myLocationButton = true
         mapView.settings.compassButton = true
         
+        // Enable POI (Points of Interest) display and fix gesture conflicts
+        mapView.settings.consumesGesturesInView = true
+        
+        // Make sure POIs are visible by default
+        mapView.isBuildingsEnabled = true
+        
         // Add pins to map
         addPinsToMap(mapView: mapView)
         

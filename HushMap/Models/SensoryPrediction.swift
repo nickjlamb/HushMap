@@ -93,7 +93,10 @@ struct VenuePredictionRequest: Codable {
 // Response model for venue prediction
 struct VenuePredictionResponse: Identifiable {
     var id: UUID
+    let venueName: String
+    let venueType: String
     let summary: String
+    let interestingFact: String
     let noiseLevel: SensoryLevel
     let crowdLevel: SensoryLevel
     let lightingLevel: SensoryLevel
@@ -108,14 +111,17 @@ struct VenuePredictionResponse: Identifiable {
 // Extension to handle Codable conformance
 extension VenuePredictionResponse: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, summary, noiseLevel, crowdLevel, lightingLevel, confidence, timestamp
+        case id, venueName, venueType, summary, interestingFact, noiseLevel, crowdLevel, lightingLevel, confidence, timestamp
         // coordinate is intentionally excluded as CLLocationCoordinate2D is not Codable
     }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
+        venueName = try container.decode(String.self, forKey: .venueName)
+        venueType = try container.decode(String.self, forKey: .venueType)
         summary = try container.decode(String.self, forKey: .summary)
+        interestingFact = try container.decode(String.self, forKey: .interestingFact)
         noiseLevel = try container.decode(SensoryLevel.self, forKey: .noiseLevel)
         crowdLevel = try container.decode(SensoryLevel.self, forKey: .crowdLevel)
         lightingLevel = try container.decode(SensoryLevel.self, forKey: .lightingLevel)
@@ -127,7 +133,10 @@ extension VenuePredictionResponse: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(venueName, forKey: .venueName)
+        try container.encode(venueType, forKey: .venueType)
         try container.encode(summary, forKey: .summary)
+        try container.encode(interestingFact, forKey: .interestingFact)
         try container.encode(noiseLevel, forKey: .noiseLevel)
         try container.encode(crowdLevel, forKey: .crowdLevel)
         try container.encode(lightingLevel, forKey: .lightingLevel)
@@ -144,7 +153,10 @@ extension VenuePredictionResponse {
     // This initializer allows setting default values and coordinate in a type-safe way
     static func create(
         id: UUID = UUID(),
+        venueName: String,
+        venueType: String,
         summary: String,
+        interestingFact: String = "",
         noiseLevel: SensoryLevel,
         crowdLevel: SensoryLevel,
         lightingLevel: SensoryLevel,
@@ -154,7 +166,10 @@ extension VenuePredictionResponse {
     ) -> VenuePredictionResponse {
         var response = VenuePredictionResponse(
             id: id,
+            venueName: venueName,
+            venueType: venueType,
             summary: summary,
+            interestingFact: interestingFact,
             noiseLevel: noiseLevel,
             crowdLevel: crowdLevel,
             lightingLevel: lightingLevel,

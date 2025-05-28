@@ -4,13 +4,14 @@ import SwiftData
 
 class PredictionService {
     private let modelContext: ModelContext?
+    private let openAIService = OpenAIService()
     
     init(modelContext: ModelContext? = nil) {
         self.modelContext = modelContext
     }
     
-    // Method to generate prediction from Place Details (for integration with map search)
-    func generateSensoryPrediction(for place: PlaceDetails, time: Date, weather: String, userReportsSummary: String) -> VenuePredictionResponse {
+    // Method to generate AI-powered prediction from Place Details (for integration with map search)
+    func generateSensoryPrediction(for place: PlaceDetails, time: Date, weather: String, userReportsSummary: String) async -> VenuePredictionResponse {
         // Extract day of week and time of day
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE" // Full day name
@@ -19,24 +20,117 @@ class PredictionService {
         dateFormatter.dateFormat = "h:mm a"
         let timeOfDay = dateFormatter.string(from: time)
         
-        // Create prediction request
-        let request = VenuePredictionRequest(
-            venueName: place.name,
-            venueType: inferVenueType(from: place.name),
-            location: place.address,
-            dayOfWeek: dayOfWeek,
-            timeOfDay: timeOfDay,
-            weather: weather,
-            userReportsSummary: userReportsSummary
-        )
+        print("🤖 Using AI to generate prediction for \(place.name) at \(timeOfDay)")
         
-        // Generate prediction using existing method with coordinate
-        var prediction = generatePrediction(for: request, coordinate: place.coordinate, targetTime: time)
         
-        // Add the coordinate information
-        prediction.coordinate = place.coordinate
+        do {
+            // Use AI to generate comprehensive sensory prediction
+            let aiPrediction = try await openAIService.generateSensoryPrediction(
+                venueName: place.name,
+                venueType: inferVenueType(from: place.name),
+                dayOfWeek: dayOfWeek,
+                timeOfDay: timeOfDay,
+                weather: weather,
+                placesData: userReportsSummary.isEmpty ? nil : userReportsSummary
+            )
+            
+            // Try to generate interesting fact
+            let interestingFact: String
+            do {
+                interestingFact = try await openAIService.generateInterestingFact(venueName: place.name)
+            } catch {
+                print("⚠️ Could not generate interesting fact: \(error)")
+                interestingFact = ""
+            }
+            
+            // Parse AI response to extract sensory levels and clean summary
+            let (noise, crowd, lighting, cleanedSummary) = parseAISensoryLevels(from: aiPrediction)
+            
+            return VenuePredictionResponse(
+                id: UUID(),
+                venueName: place.name,
+                venueType: inferVenueType(from: place.name),
+                summary: cleanedSummary,
+                interestingFact: interestingFact,
+                noiseLevel: noise,
+                crowdLevel: crowd,
+                lightingLevel: lighting,
+                confidence: .high, // AI predictions are generally high confidence
+                timestamp: Date(),
+                coordinate: place.coordinate
+            )
+            
+        } catch {
+            print("❌ AI prediction failed: \(error). Falling back to algorithmic prediction.")
+            
+            // Fallback to original algorithmic prediction if AI fails
+            let request = VenuePredictionRequest(
+                venueName: place.name,
+                venueType: inferVenueType(from: place.name),
+                location: place.address,
+                dayOfWeek: dayOfWeek,
+                timeOfDay: timeOfDay,
+                weather: weather,
+                userReportsSummary: userReportsSummary
+            )
+            
+            var prediction = generatePrediction(for: request, coordinate: place.coordinate, targetTime: time)
+            prediction.coordinate = place.coordinate
+            return prediction
+        }
+    }
+    
+    // Helper function to parse AI response and extract sensory levels from structured format
+    private func parseAISensoryLevels(from aiResponse: String) -> (SensoryLevel, SensoryLevel, SensoryLevel, String) {
+        let lines = aiResponse.components(separatedBy: .newlines)
         
-        return prediction
+        var noise: SensoryLevel = .moderate
+        var crowd: SensoryLevel = .moderate
+        var lighting: SensoryLevel = .moderate
+        var summaryStartIndex = 0
+        
+        // Parse structured data from the beginning of the response
+        for (index, line) in lines.enumerated() {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces).lowercased()
+            
+            if trimmedLine.hasPrefix("noise_level:") {
+                let value = trimmedLine.replacingOccurrences(of: "noise_level:", with: "").trimmingCharacters(in: .whitespaces)
+                noise = mapStringToSensoryLevel(value)
+                summaryStartIndex = max(summaryStartIndex, index + 1)
+            } else if trimmedLine.hasPrefix("crowd_level:") {
+                let value = trimmedLine.replacingOccurrences(of: "crowd_level:", with: "").trimmingCharacters(in: .whitespaces)
+                crowd = mapStringToSensoryLevel(value)
+                summaryStartIndex = max(summaryStartIndex, index + 1)
+            } else if trimmedLine.hasPrefix("lighting_level:") {
+                let value = trimmedLine.replacingOccurrences(of: "lighting_level:", with: "").trimmingCharacters(in: .whitespaces)
+                lighting = mapStringToSensoryLevel(value)
+                summaryStartIndex = max(summaryStartIndex, index + 1)
+            }
+        }
+        
+        // Extract the natural language summary (everything after the structured data)
+        let summaryLines = Array(lines.dropFirst(summaryStartIndex))
+        let summary = summaryLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return (noise, crowd, lighting, summary.isEmpty ? aiResponse : summary)
+    }
+    
+    // Helper function to map string values to SensoryLevel enum
+    private func mapStringToSensoryLevel(_ value: String) -> SensoryLevel {
+        switch value {
+        case "very quiet", "empty", "dim":
+            return .veryLow
+        case "quiet", "light", "soft":
+            return .low
+        case "moderate":
+            return .moderate
+        case "noisy", "busy", "bright":
+            return .high
+        case "very loud", "very crowded", "very bright":
+            return .veryHigh
+        default:
+            return .moderate
+        }
     }
     
     // Infer venue type from name (would be replaced with actual data from the Places API)
@@ -116,7 +210,10 @@ class PredictionService {
         let confidence = determineConfidenceLevel(request, realDataConfidence: realReportData.confidence)
         
         return VenuePredictionResponse.create(
+            venueName: request.venueName,
+            venueType: request.venueType,
             summary: summary,
+            interestingFact: "", // No AI fact for algorithmic fallback
             noiseLevel: noiseLevel,
             crowdLevel: crowdLevel,
             lightingLevel: lightingLevel,
@@ -542,34 +639,77 @@ class PredictionService {
             return request.userReportsSummary
         }
         
-        // Time-specific description
-        let timeDescription = request.timeOfDay.contains("AM") || (request.timeOfDay.contains(":") && Int(request.timeOfDay.split(separator: ":")[0]) ?? 12 < 12) 
-            ? "morning" 
-            : (Int(request.timeOfDay.split(separator: ":")[0]) ?? 12 < 17 ? "afternoon" : "evening")
-        
-        // Venue-specific description
-        var summary = "This \(request.venueType.lowercased()) may "
-        
-        // Noise description
-        switch noise {
-        case .veryLow: summary += "be very quiet"
-        case .low: summary += "be relatively quiet"
-        case .moderate: summary += "have moderate noise levels"
-        case .high: summary += "be quite noisy"
-        case .veryHigh: summary += "be very loud"
-        case .varies: summary += "have varying noise levels"
+        // Time-specific description - handle 12-hour format properly (case-insensitive)
+        let timeDescription: String
+        let timeUpper = request.timeOfDay.uppercased()
+        if timeUpper.contains("AM") {
+            // Morning hours
+            timeDescription = "morning"
+        } else if timeUpper.contains("PM") {
+            // PM hours - need to check actual hour
+            let hourString = request.timeOfDay.components(separatedBy: ":")[0]
+            let hour = Int(hourString) ?? 12
+            
+            print("🕐 Parsed hour: \(hour) from '\(request.timeOfDay)'")
+            
+            if hour == 12 || hour < 5 {
+                // 12 PM - 4:59 PM
+                timeDescription = "afternoon"
+            } else {
+                // 5 PM onwards
+                timeDescription = "evening"
+            }
+        } else {
+            // Fallback for 24-hour format (shouldn't happen but just in case)
+            let hour = Int(request.timeOfDay.split(separator: ":")[0]) ?? 12
+            if hour >= 5 && hour < 12 {
+                timeDescription = "morning"
+            } else if hour >= 12 && hour < 17 {
+                timeDescription = "afternoon"
+            } else {
+                timeDescription = "evening"
+            }
         }
         
-        summary += " and "
+        // Generate logical description avoiding contradictions using actual venue name
+        var summary = "\(request.venueName) is likely to be "
         
-        // Crowd description
-        switch crowd {
-        case .veryLow: summary += "nearly empty"
-        case .low: summary += "not very crowded"
-        case .moderate: summary += "moderately busy"
-        case .high: summary += "fairly crowded"
-        case .veryHigh: summary += "very crowded"
-        case .varies: summary += "have varying crowd levels"
+        // Smart text generation to avoid contradictions like "quiet and busy"
+        let isQuiet = (noise == .veryLow || noise == .low)
+        let isBusy = (crowd == .high || crowd == .veryHigh)
+        
+        if isQuiet && isBusy {
+            // Contradiction: explain why it can be both
+            summary += "busy but relatively quiet (perhaps well-designed acoustically)"
+        } else if isBusy && (noise == .high || noise == .veryHigh) {
+            // Both noisy and busy - combine logically
+            summary += "busy and noisy"
+        } else if isQuiet && (crowd == .veryLow || crowd == .low) {
+            // Both quiet and empty - combine logically  
+            summary += "quiet and not very crowded"
+        } else {
+            // Describe noise first, then crowd separately
+            switch noise {
+            case .veryLow: summary += "very quiet"
+            case .low: summary += "relatively quiet" 
+            case .moderate: summary += "moderately noisy"
+            case .high: summary += "quite noisy"
+            case .veryHigh: summary += "very loud"
+            case .varies: summary += "variable in noise levels"
+            }
+            
+            // Add crowd info as separate sentence if levels don't match well
+            if !isQuiet || crowd != .veryLow {
+                summary += ". Expect it to be "
+                switch crowd {
+                case .veryLow: summary += "nearly empty"
+                case .low: summary += "not very crowded"
+                case .moderate: summary += "moderately busy"
+                case .high: summary += "fairly crowded"  
+                case .veryHigh: summary += "very crowded"
+                case .varies: summary += "variable in crowd levels"
+                }
+            }
         }
         
         // Weather impact

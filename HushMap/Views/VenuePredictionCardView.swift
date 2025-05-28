@@ -26,6 +26,7 @@ struct VenuePredictionCardView: View {
                     Text(venue.timeOfDay)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    
                 }
             }
             
@@ -35,6 +36,7 @@ struct VenuePredictionCardView: View {
             Text(prediction.summary)
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
+            
             
             // Sensory levels
             HStack(spacing: 12) {
@@ -98,7 +100,10 @@ struct VenuePredictionCardView_Previews: PreviewProvider {
         )
         
         let samplePrediction = VenuePredictionResponse.create(
+            venueName: "Cozy Corner Café",
+            venueType: "Café",
             summary: "This café is usually quiet in the mornings but tends to get busier and louder after 3 PM on weekends. The lighting is generally soft and calming.",
+            interestingFact: "Did you know? This café sources its beans from a single farm in Ethiopia that's been family-owned for over 150 years!",
             noiseLevel: .high,
             crowdLevel: .high,
             lightingLevel: .low,

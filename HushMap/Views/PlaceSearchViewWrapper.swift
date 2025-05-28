@@ -159,7 +159,7 @@ struct PlaceSearchViewWrapper: View {
     
     private func fetchDetails(for placeID: String) {
         isLoading = true
-        placeService.fetchPlaceDetails(for: placeID) { details in
+        placeService.fetchPlaceDetails(placeId: placeID) { details in
             self.selectedPlace = details
             self.isLoading = false
         }
