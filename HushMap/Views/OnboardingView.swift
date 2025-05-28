@@ -198,7 +198,7 @@ struct SensoryExamplesView: View {
                     Spacer()
                     
                     // Level indicator
-                    SensoryLevelIndicator(level: example.level)
+                    OnboardingSensoryIndicator(level: example.level)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -302,7 +302,7 @@ struct InteractiveDemoView: View {
                                 Text(example.description)
                                     .font(.caption)
                                     .multilineTextAlignment(.center)
-                                SensoryLevelIndicator(level: example.level)
+                                OnboardingSensoryIndicator(level: example.level)
                             }
                             .foregroundColor(selectedLevel == example.level ? .white : .primary)
                             .frame(maxWidth: .infinity)
@@ -335,8 +335,8 @@ struct InteractiveDemoView: View {
     }
 }
 
-// MARK: - Sensory Level Indicator
-struct SensoryLevelIndicator: View {
+// MARK: - Onboarding Sensory Level Indicator
+struct OnboardingSensoryIndicator: View {
     let level: SensoryLevel
     
     var body: some View {
