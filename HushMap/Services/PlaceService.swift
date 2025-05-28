@@ -15,7 +15,7 @@ struct PlaceDetails {
 class PlaceService {
     // Note: For Places API (New) with direct HTTP calls, you may need a separate API key
     // with "HTTP referrers" restriction instead of "iOS apps" restriction
-    private let apiKey = APIKeys.googlePlaces
+    private let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_PLACES_API_KEY") as? String ?? ""
 
     func fetchAutocomplete(for input: String, completion: @escaping ([PlaceSuggestion]) -> Void) {
         // Don't search for empty or very short inputs

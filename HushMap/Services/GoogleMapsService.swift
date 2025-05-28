@@ -7,10 +7,10 @@ class GoogleMapsService {
     private init() {}
     
     func configure() {
-        let apiKey = APIKeys.googleMaps
+        let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String ?? ""
         
-        if apiKey.isEmpty {
-            print("⚠️ WARNING: Please set your Google Maps API key in APIKeys.swift")
+        if apiKey.isEmpty || apiKey == "$(GOOGLE_MAPS_API_KEY)" {
+            print("⚠️ WARNING: Please set your Google Maps API key in Config-Local.xcconfig")
             print("📝 Get your API key from: https://console.cloud.google.com/")
             print("🔗 Enable Maps SDK for iOS")
         } else {
