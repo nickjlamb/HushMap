@@ -493,7 +493,7 @@ class PredictionService {
         
         // Parse time
         let timeComponents = timeOfDay.split(separator: ":")
-        guard let hour = Int(timeComponents[0]) else {
+        guard timeComponents.count > 0, let hour = Int(timeComponents[0]) else {
             return (1.0, 1.0) // no adjustment
         }
         

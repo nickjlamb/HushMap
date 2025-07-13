@@ -54,6 +54,7 @@ See `GOOGLE_MAPS_SETUP.md` and `NEW_PLACES_API_SETUP.md` for detailed instructio
 - Complete user data deletion capabilities
 - Compliance with GDPR, CCPA, and Apple privacy guidelines
 - Minimal data collection approach
+- Proper API key restrictions to prevent unauthorized usage (see API_KEY_SECURITY.md)
 
 ## License
 

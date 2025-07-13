@@ -6,7 +6,8 @@ class AudioAnalysisService: ObservableObject {
     @Published var currentDecibels: Float = 0.0
     @Published var isListening: Bool = false
     @Published var hasPermission: Bool = false
-    @Published var permissionStatus: AVAudioSession.RecordPermission = .undetermined
+    // Use static value to avoid deprecated warning in iOS 17
+    @Published var permissionStatus: AVAudioSession.RecordPermission = .denied // Default to denied, will check actual status in init
     
     private var audioEngine: AVAudioEngine?
     private var inputNode: AVAudioInputNode?
@@ -19,14 +20,21 @@ class AudioAnalysisService: ObservableObject {
     
     init() {
         setupAudioSession()
-        checkMicrophonePermission()
+        
+        // Initialize with actual permission status
+        DispatchQueue.main.async {
+            self.checkMicrophonePermission()
+        }
     }
     
     // MARK: - Permission Management
     
     func checkMicrophonePermission() {
-        permissionStatus = AVAudioSession.sharedInstance().recordPermission
-        hasPermission = permissionStatus == .granted
+        let permission = AVAudioSession.sharedInstance().recordPermission
+        DispatchQueue.main.async {
+            self.permissionStatus = permission
+            self.hasPermission = permission == .granted
+        }
     }
     
     func requestMicrophonePermission() async -> Bool {
@@ -49,7 +57,9 @@ class AudioAnalysisService: ObservableObject {
             try audioSession.setCategory(.record, mode: .measurement, options: [])
             try audioSession.setActive(true)
         } catch {
+            #if DEBUG
             print("Failed to setup audio session: \(error)")
+            #endif
         }
     }
     
@@ -57,7 +67,9 @@ class AudioAnalysisService: ObservableObject {
     
     func startListening() {
         guard hasPermission else {
+            #if DEBUG
             print("Microphone permission not granted")
+            #endif
             return
         }
         
@@ -68,9 +80,13 @@ class AudioAnalysisService: ObservableObject {
         do {
             try audioEngine?.start()
             isListening = true
+            #if DEBUG
             print("Started audio analysis")
+            #endif
         } catch {
+            #if DEBUG
             print("Failed to start audio engine: \(error)")
+            #endif
         }
     }
     
@@ -79,7 +95,9 @@ class AudioAnalysisService: ObservableObject {
         audioEngine?.inputNode.removeTap(onBus: 0)
         isListening = false
         currentDecibels = 0.0
+        #if DEBUG
         print("Stopped audio analysis")
+        #endif
     }
     
     private func setupAudioEngine() {
@@ -87,7 +105,9 @@ class AudioAnalysisService: ObservableObject {
         inputNode = audioEngine?.inputNode
         
         guard let inputNode = inputNode else {
+            #if DEBUG
             print("Failed to get input node")
+            #endif
             return
         }
         

@@ -79,7 +79,6 @@ struct PlacePredictionView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
-            
                 if prediction == nil {
                     // Visit details form
                     ScrollView {
@@ -289,7 +288,6 @@ struct PlacePredictionView: View {
                                         .cornerRadius(8)
                                 }
                             }
-                            
                             Divider()
                             
                             // Confidence indicator
@@ -362,12 +360,15 @@ struct PlacePredictionView: View {
             }
             .navigationTitle("Sensory Prediction")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+            .safeAreaInset(edge: .top) {
+                HStack {
+                    Spacer()
                     Button("Done") {
                         isPresented = false
                     }
                     .foregroundColor(.hushBackground)
+                    .padding(.trailing)
+                    .padding(.top, 8)
                 }
             }
         }

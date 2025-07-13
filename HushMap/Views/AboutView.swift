@@ -172,7 +172,7 @@ struct AboutView: View {
                     .accessibilityLabel("Open terms of service")
                     
                     Button {
-                        if let url = URL(string: "mailto:support@pharmatools.ai") {
+                        if let url = URL(string: "mailto:support@hushmap.app") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
@@ -181,7 +181,7 @@ struct AboutView: View {
                                 .font(.title3)
                             Text("Contact Support")
                             Spacer()
-                            Text("support@pharmatools.ai")
+                            Text("support@hushmap.app")
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                         }
@@ -261,7 +261,7 @@ struct AboutView: View {
                         Text("HushMap v1.0")
                             .font(.caption)
                             .foregroundColor(textColor.opacity(0.6))
-                        Text("© 2025 PharmaTool AI")
+                        Text("© 2025 HushMap")
                             .font(.caption2)
                             .foregroundColor(textColor.opacity(0.5))
                     }

@@ -21,12 +21,17 @@ Your PlaceService.swift has been updated to use the new Google Places API (New).
 2. Search for "Places API (New)"
 3. Click on it and press "Enable"
 
-### Step 2: Update API Key Restrictions (if any)
+### Step 2: Update API Key Restrictions (REQUIRED)
 1. Go to [API Keys](https://console.cloud.google.com/apis/credentials)
 2. Click on your API key
-3. Under "API restrictions":
-   - If you have restrictions, add "Places API (New)" to the list
-   - If no restrictions, you're good to go
+3. Under "Application restrictions":
+   - Select "HTTP referrers"
+   - Add `https://hushmap.app/*` as an authorized referrer
+   - For development, add `http://localhost:*/*` (optional)
+4. Under "API restrictions":
+   - Add "Places API (New)" to the list of restricted APIs
+   
+> ⚠️ **CRITICAL SECURITY WARNING**: Unrestricted API keys will lead to unauthorized usage and additional billing charges. Google will send warning emails for unrestricted keys. See API_KEY_SECURITY.md for details.
 
 ### Step 3: Verify Old API Disable (Optional)
 - You can now disable the legacy "Places API" since we're using the new one

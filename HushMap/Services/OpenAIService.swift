@@ -31,7 +31,7 @@ class OpenAIService {
     private let apiKey: String = {
         // Try to read from Info.plist first
         if let key = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String, !key.isEmpty && !key.contains("$") {
-            print("🔑 OpenAI API key loaded from Info.plist: '\(String(key.prefix(10)))...'")
+            // API key loaded successfully
             return key
         }
         
@@ -42,7 +42,7 @@ class OpenAIService {
             for line in lines {
                 if line.hasPrefix("OPENAI_API_KEY =") {
                     let key = line.replacingOccurrences(of: "OPENAI_API_KEY =", with: "").trimmingCharacters(in: .whitespaces)
-                    print("🔑 OpenAI API key loaded from config file: '\(String(key.prefix(10)))...'")
+                    // API key loaded from config
                     return key
                 }
             }

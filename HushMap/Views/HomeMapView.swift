@@ -84,11 +84,13 @@ struct HomeMapView: View {
                     handleMapTap(at: coordinate)
                 },
                 onPOITap: { placeID, name, location in
-                    print("User tapped POI: \(name)")
+                    print("User tapped POI: \(name) with ID: \(placeID)")
+                    
+                    // Create place details from the POI information
                     let place = PlaceDetails(name: name, address: "", coordinate: location)
-                    selectedPlace = place
                     tempPin = place
-                    showingMapTapPrediction = true
+                    self.selectedPlace = place
+                    self.showingMapTapPrediction = true
                 }
             )
             .ignoresSafeArea(.all, edges: .all)
@@ -113,6 +115,10 @@ struct HomeMapView: View {
                     currentCoordinate = newLocation
                     hasInitializedLocation = true
                 }
+            }
+            .onDisappear {
+                // Clean up notification observer to prevent memory leak
+                NotificationCenter.default.removeObserver(self, name: Notification.Name("CenterMapOnCoordinate"), object: nil)
             }
 
             // Map Legend
@@ -191,28 +197,17 @@ struct HomeMapView: View {
     }
     
     private func handleMapTap(at coordinate: CLLocationCoordinate2D) {
-        // Don't interfere if already looking up a location
-        guard !isLookingUpLocation else { return }
+        // Create a generic place for the tapped location
+        let place = PlaceDetails(
+            name: "Selected Location",
+            address: "Coordinates: \(String(format: "%.5f", coordinate.latitude)), \(String(format: "%.5f", coordinate.longitude))",
+            coordinate: coordinate
+        )
         
-        isLookingUpLocation = true
-        
-        // Use Places API to find business details at this location
-        let placeService = PlaceService()
-        placeService.findPlace(at: coordinate) { [self] (place: PlaceDetails?) in
-            DispatchQueue.main.async {
-                self.isLookingUpLocation = false
-                
-                guard let place = place else {
-                    print("No place found at this location")
-                    return
-                }
-                
-                // Set the place and show prediction
-                self.selectedPlace = place
-                self.tempPin = place
-                self.showingMapTapPrediction = true
-            }
-        }
+        // Set the place and show prediction
+        self.selectedPlace = place
+        self.tempPin = place
+        self.showingMapTapPrediction = true
     }
     
     // Google Maps style helper properties

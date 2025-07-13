@@ -161,9 +161,15 @@ class CSVLoader {
                 modelContext.insert(currentUser)
             } else {
                 do {
-                    currentUser = try modelContext.fetch(userDescriptor).first!
+                    if let existingUser = try modelContext.fetch(userDescriptor).first {
+                        currentUser = existingUser
+                    } else {
+                        // No user found, create default
+                        currentUser = User(name: "Default User")
+                        modelContext.insert(currentUser)
+                    }
                 } catch {
-                    // Fallback
+                    // Fallback on error
                     currentUser = User(name: "Default User")
                     modelContext.insert(currentUser)
                 }

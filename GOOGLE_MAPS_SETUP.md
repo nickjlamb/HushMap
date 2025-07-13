@@ -19,10 +19,13 @@ This guide will help you complete the **Google Maps only** integration for the *
 2. Create a new project or select existing
 3. Enable **Maps SDK for iOS**
 4. Create credentials → API Key
-5. Restrict the API key:
+5. **IMPORTANT: Restrict the API key**:
    - Application restrictions: iOS apps
    - Bundle ID: `com.medcopywriter.HushMap`
+   - Apple Team ID: Add your developer team ID
    - API restrictions: Maps SDK for iOS
+   
+   > ⚠️ **Security Warning**: Unrestricted API keys can lead to unauthorized usage and additional billing charges. See API_KEY_SECURITY.md for details.
 
 ### 3. Configure API Key
 ```swift

@@ -26,17 +26,23 @@ class PlaceService {
         
         // Debug: Check if API key is loaded
         if apiKey.isEmpty {
+            #if DEBUG
             print("❌ Places API key is empty! Check Config-Local.xcconfig")
+            #endif
             completion([])
             return
         }
-        print("🔑 Using Places API key: \(String(apiKey.prefix(10)))...")
+        #if DEBUG
+        // Using Places API key
+        #endif
         
         // New Places API endpoint
         let urlString = "https://places.googleapis.com/v1/places:autocomplete"
         
         guard let url = URL(string: urlString) else {
+            #if DEBUG
             print("Invalid URL")
+            #endif
             completion([])
             return
         }
@@ -55,7 +61,9 @@ class PlaceService {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
+            #if DEBUG
             print("Error creating request body: \(error)")
+            #endif
             completion([])
             return
         }
@@ -63,6 +71,7 @@ class PlaceService {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    #if DEBUG
                     print("❌ Places API Network error: \(error)")
                     // Check for specific network errors
                     if let urlError = error as? URLError {
@@ -75,24 +84,31 @@ class PlaceService {
                             print("❌ Network error: \(urlError.localizedDescription)")
                         }
                     }
+                    #endif
                     completion([])
                     return
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
+                    #if DEBUG
                     print("📡 Places API Response status: \(httpResponse.statusCode)")
+                    #endif
                     if httpResponse.statusCode != 200 {
+                        #if DEBUG
                         print("❌ Places API HTTP Error: \(httpResponse.statusCode)")
                         if let data = data, let errorString = String(data: data, encoding: .utf8) {
                             print("❌ Error response: \(errorString)")
                         }
+                        #endif
                         completion([])
                         return
                     }
                 }
                 
                 guard let data = data else {
+                    #if DEBUG
                     print("❌ No data received from Places API")
+                    #endif
                     completion([])
                     return
                 }
@@ -114,11 +130,15 @@ class PlaceService {
                         
                         completion(placeSuggestions)
                     } else {
+                        #if DEBUG
                         print("Unexpected JSON structure")
+                        #endif
                         completion([])
                     }
                 } catch {
+                    #if DEBUG
                     print("JSON parsing error: \(error)")
+                    #endif
                     completion([])
                 }
             }
@@ -139,10 +159,12 @@ class PlaceService {
         request.setValue("displayName,formattedAddress,location", forHTTPHeaderField: "X-Goog-FieldMask")
         request.setValue("https://hushmap.app", forHTTPHeaderField: "Referer")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
+                    #if DEBUG
                     print("Network error: \(error)")
+                    #endif
                     completion(nil)
                     return
                 }
@@ -174,25 +196,39 @@ class PlaceService {
                                 latitude = lat
                                 longitude = lon
                             } else {
+                                #if DEBUG
                                 print("❌ Could not parse latitude/longitude")
+                                #endif
                                 completion(nil)
                                 return
                             }
                             
                             let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                            let placeDetails = PlaceDetails(name: name, address: address, coordinate: coordinate)
+                            
+                            let placeDetails = PlaceDetails(
+                                name: name,
+                                address: address,
+                                coordinate: coordinate
+                            )
+                            
                             completion(placeDetails)
                         } else {
+                            #if DEBUG
                             print("❌ Unexpected JSON structure for place details")
                             print("Available keys: \(json.keys)")
+                            #endif
                             completion(nil)
                         }
                     } else {
+                        #if DEBUG
                         print("❌ Could not parse JSON as dictionary")
+                        #endif
                         completion(nil)
                     }
                 } catch {
+                    #if DEBUG
                     print("❌ JSON parsing error: \(error)")
+                    #endif
                     completion(nil)
                 }
             }
@@ -200,79 +236,12 @@ class PlaceService {
     }
     
     func findPlace(at coordinate: CLLocationCoordinate2D, completion: @escaping (PlaceDetails?) -> Void) {
-        // Use Places API nearbySearch to find places at the given coordinate
-        let urlString = "https://places.googleapis.com/v1/places:searchNearby"
-        
-        guard let url = URL(string: urlString) else {
-            completion(nil)
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
-        request.setValue("https://hushmap.app", forHTTPHeaderField: "Referer")
-        request.setValue("places.displayName,places.formattedAddress,places.location", forHTTPHeaderField: "X-Goog-FieldMask")
-        
-        let requestBody: [String: Any] = [
-            "locationRestriction": [
-                "circle": [
-                    "center": [
-                        "latitude": coordinate.latitude,
-                        "longitude": coordinate.longitude
-                    ],
-                    "radius": 50.0 // 50 meters radius
-                ]
-            ],
-            "maxResultCount": 1
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            print("Error creating request body: \(error)")
-            completion(nil)
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Network error: \(error)")
-                    completion(nil)
-                    return
-                }
-                
-                guard let data = data else {
-                    completion(nil)
-                    return
-                }
-                
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let places = json["places"] as? [[String: Any]],
-                       let firstPlace = places.first,
-                       let displayName = firstPlace["displayName"] as? [String: Any],
-                       let name = displayName["text"] as? String,
-                       let address = firstPlace["formattedAddress"] as? String,
-                       let location = firstPlace["location"] as? [String: Any],
-                       let latitude = location["latitude"] as? Double,
-                       let longitude = location["longitude"] as? Double {
-                        
-                        let placeCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                        let placeDetails = PlaceDetails(name: name, address: address, coordinate: placeCoordinate)
-                        completion(placeDetails)
-                    } else {
-                        // No place found at this location
-                        completion(nil)
-                    }
-                } catch {
-                    print("JSON parsing error: \(error)")
-                    completion(nil)
-                }
-            }
-        }.resume()
+        // Simple version that just creates a generic place with coordinates
+        let place = PlaceDetails(
+            name: "Location",
+            address: "Coordinates: \(coordinate.latitude), \(coordinate.longitude)",
+            coordinate: coordinate
+        )
+        completion(place)
     }
-    
 }

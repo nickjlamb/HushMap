@@ -16,6 +16,12 @@ class SensoryProfile {
     var averageCrowdsRating: Double = 0.0 // Average crowds level user reports
     var averageLightingRating: Double = 0.0 // Average lighting level user reports
     
+    // Comfort-based learning metrics
+    var comfortableNoiseSum: Double = 0.0 // Sum of noise levels when comfortable
+    var comfortableCrowdsSum: Double = 0.0 // Sum of crowds levels when comfortable
+    var comfortableLightingSum: Double = 0.0 // Sum of lighting levels when comfortable
+    var comfortableReportsCount: Int = 0 // Count of comfortable reports
+    
     // Preference confidence (0.0 = uncertain, 1.0 = very confident)
     var confidenceScore: Double = 0.0
     
@@ -50,29 +56,48 @@ class SensoryProfile {
         averageCrowdsRating = (averageCrowdsRating * oldWeight) + (report.crowds * weight)
         averageLightingRating = (averageLightingRating * oldWeight) + (report.lighting * weight)
         
-        // Learn preferences: if user consistently reports high values, they're likely tolerant
-        // If they report low values, they're likely sensitive
+        // Track comfortable experiences (comfort > 0.6)
+        if report.comfort > 0.6 {
+            comfortableNoiseSum += report.noise
+            comfortableCrowdsSum += report.crowds
+            comfortableLightingSum += report.lighting
+            comfortableReportsCount += 1
+        }
+        
+        // Learn preferences based on comfort correlation
         updatePreferences()
         updateConfidence()
     }
     
     private func updatePreferences() {
-        // TODO: CRITICAL FIX NEEDED
-        // Current logic is WRONG - it assumes reported levels = preferences
-        // Should be: analyze comfort correlation with sensory levels
-        // 
-        // Correct logic should be:
-        // 1. Find reports where comfort > 0.6 (comfortable experiences)
-        // 2. Calculate average sensory levels from those comfortable reports
-        // 3. Those averages become the preferred levels
-        //
-        // Example: User reports high noise (8/10) but low comfort (2/10)
-        // = User dislikes high noise, prefers quieter environments
+        // Use comfort-based learning: preferences are the average sensory levels
+        // from reports where the user felt comfortable (comfort > 0.6)
         
-        // TEMPORARY: Keep existing flawed logic until comfort data analysis is implemented
-        noisePreference = min(1.0, max(0.0, averageNoiseRating))
-        crowdsPreference = min(1.0, max(0.0, averageCrowdsRating))
-        lightingPreference = min(1.0, max(0.0, averageLightingRating))
+        if comfortableReportsCount > 0 {
+            // Calculate average sensory levels from comfortable experiences
+            let avgComfortableNoise = comfortableNoiseSum / Double(comfortableReportsCount)
+            let avgComfortableCrowds = comfortableCrowdsSum / Double(comfortableReportsCount)
+            let avgComfortableLighting = comfortableLightingSum / Double(comfortableReportsCount)
+            
+            // Blend with existing preferences using exponential moving average
+            // This prevents wild swings and allows gradual learning
+            let learningRate = 0.3 // How quickly to adapt (0.0 = no change, 1.0 = instant change)
+            
+            noisePreference = (noisePreference * (1.0 - learningRate)) + (avgComfortableNoise * learningRate)
+            crowdsPreference = (crowdsPreference * (1.0 - learningRate)) + (avgComfortableCrowds * learningRate)
+            lightingPreference = (lightingPreference * (1.0 - learningRate)) + (avgComfortableLighting * learningRate)
+        } else if totalReports > 0 {
+            // If no comfortable reports yet, use inverse correlation
+            // High reported levels with assumed discomfort = low preference
+            noisePreference = min(1.0, max(0.0, 1.0 - averageNoiseRating))
+            crowdsPreference = min(1.0, max(0.0, 1.0 - averageCrowdsRating))
+            lightingPreference = min(1.0, max(0.0, 1.0 - averageLightingRating))
+        }
+        
+        // Ensure preferences stay within valid range
+        noisePreference = min(1.0, max(0.0, noisePreference))
+        crowdsPreference = min(1.0, max(0.0, crowdsPreference))
+        lightingPreference = min(1.0, max(0.0, lightingPreference))
     }
     
     private func updateConfidence() {
