@@ -6,13 +6,18 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var badges: [Badge]
     @Query private var user: [User]
+    @Query private var reports: [Report]
     @StateObject private var authService = AuthenticationService.shared
+    @StateObject private var syncService = ReportSyncService.shared
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("smartNotificationsEnabled") private var smartNotificationsEnabled: Bool = true
+    @AppStorage("hasCompletedHistoricalSync") private var hasCompletedHistoricalSync: Bool = false
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var smartNotificationService: SmartNotificationService?
+    @State private var isSyncingReports = false
+    @State private var syncMessage: String?
     
     private var currentUser: User {
         // Get the user or create one if needed
@@ -404,6 +409,63 @@ struct ProfileView: View {
                 Divider()
                     .padding(.horizontal, 16)
                 
+                // Sync Historical Reports
+                Button(action: {
+                    Task {
+                        isSyncingReports = true
+                        syncMessage = nil
+                        
+                        await syncService.syncAllHistoricalReports(from: modelContext)
+                        
+                        isSyncingReports = false
+                        hasCompletedHistoricalSync = true
+                        syncMessage = "✅ Sync complete! Your reports are now shared globally."
+                        
+                        // Clear message after 3 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            syncMessage = nil
+                        }
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: isSyncingReports ? "arrow.triangle.2.circlepath" : "icloud.and.arrow.up")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 24)
+                            .rotationEffect(.degrees(isSyncingReports ? 360 : 0))
+                            .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: isSyncingReports)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sync Reports to Cloud")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Text(syncMessage ?? "Share your \(reports.count) local reports globally")
+                                .font(.caption)
+                                .foregroundColor(syncMessage != nil ? .green : .secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if !hasCompletedHistoricalSync && !isSyncingReports {
+                            Text("NEW")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .cornerRadius(4)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(isSyncingReports)
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
                 // Reset Onboarding option
                 Button(action: {
                     hasCompletedOnboarding = false
@@ -506,27 +568,6 @@ struct ProfileView: View {
                 
                 Divider()
                     .padding(.horizontal, 16)
-                
-                // App Version Info
-                HStack {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.secondary)
-                        .frame(width: 24)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("App Version")
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        
-                        Text("1.0")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 16)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12)

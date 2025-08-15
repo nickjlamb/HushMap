@@ -77,7 +77,7 @@ struct GoogleMapView: UIViewRepresentable {
             let marker = GMSMarker()
             marker.position = pin.coordinate
             marker.title = "Sensory Report"
-            marker.snippet = "Quality: \(String(format: "%.1f", pin.qualityRating))"
+            marker.snippet = "Quality: \(pin.qualityRating)"
             
             // Create marker based on performance level
             switch optimizationLevel {
@@ -226,14 +226,15 @@ struct GoogleMapView: UIViewRepresentable {
     }
     
     private func getQualityColor(for rating: Double) -> UIColor {
+        // Lower sensory levels are better (quieter, less crowded, softer lighting)
         switch rating {
-        case 0.8...1.0:
+        case 0.0..<0.3:
             return UIColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0) // Excellent - Green
-        case 0.6..<0.8:
+        case 0.3..<0.5:
             return UIColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0) // Good - Blue
-        case 0.4..<0.6:
+        case 0.5..<0.7:
             return UIColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0) // Fair - Yellow
-        case 0.2..<0.4:
+        case 0.7..<0.9:
             return UIColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0) // Poor - Orange
         default:
             return UIColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) // Very Poor - Red

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BA2B0BB72E452A25003155FB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = BA2B0BB62E452A25003155FB /* FirebaseFirestore */; };
 		BA9107E92DE5D6F60006D6C6 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BA9107E82DE5D6F60006D6C6 /* GoogleSignIn */; };
 		BA9107EB2DE5D6F60006D6C6 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BA9107EA2DE5D6F60006D6C6 /* GoogleSignInSwift */; };
 		BAF75E4F2DE4CF80001F31F6 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = BAF75E4E2DE4CF80001F31F6 /* GoogleMaps */; };
@@ -20,6 +21,8 @@
 		BA9107EF2DE5DF300006D6C6 /* Exceptions for "HushMap" folder in "HushMap" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Config-Local.xcconfig",
+				Config.xcconfig,
 				Info.plist,
 			);
 			target = BA4AA7602DC90AEF0076E771 /* HushMap */;
@@ -43,6 +46,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BA9107EB2DE5D6F60006D6C6 /* GoogleSignInSwift in Frameworks */,
+				BA2B0BB72E452A25003155FB /* FirebaseFirestore in Frameworks */,
 				BAF75E4F2DE4CF80001F31F6 /* GoogleMaps in Frameworks */,
 				BA9107E92DE5D6F60006D6C6 /* GoogleSignIn in Frameworks */,
 			);
@@ -90,6 +94,7 @@
 				BAF75E4E2DE4CF80001F31F6 /* GoogleMaps */,
 				BA9107E82DE5D6F60006D6C6 /* GoogleSignIn */,
 				BA9107EA2DE5D6F60006D6C6 /* GoogleSignInSwift */,
+				BA2B0BB62E452A25003155FB /* FirebaseFirestore */,
 			);
 			productName = HushMap;
 			productReference = BA4AA7612DC90AEF0076E771 /* HushMap.app */;
@@ -103,7 +108,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					BA4AA7602DC90AEF0076E771 = {
 						CreatedOnToolsVersion = 16.3;
@@ -122,6 +127,7 @@
 			packageReferences = (
 				BAF75E4D2DE4CF80001F31F6 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
 				BA9107E72DE5D6F60006D6C6 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				BA2B0BB52E452A25003155FB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BA4AA7622DC90AEF0076E771 /* Products */;
@@ -288,7 +294,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HushMap/HushMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 3H2VBLFN4M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -304,7 +310,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -322,7 +328,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HushMap/HushMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 3H2VBLFN4M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -338,7 +344,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -371,6 +377,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		BA2B0BB52E452A25003155FB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.1.0;
+			};
+		};
 		BA9107E72DE5D6F60006D6C6 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -390,6 +404,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		BA2B0BB62E452A25003155FB /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BA2B0BB52E452A25003155FB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
 		BA9107E82DE5D6F60006D6C6 /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BA9107E72DE5D6F60006D6C6 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
