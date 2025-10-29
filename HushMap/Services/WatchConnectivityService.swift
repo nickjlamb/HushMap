@@ -160,10 +160,12 @@ class WatchConnectivityService: NSObject, ObservableObject {
         }
 
         // Create a simplified report from Watch input
-        let noise = isQuiet ? 0.3 : 0.8
-        let crowds = isQuiet ? 0.3 : 0.7
-        let lighting = 0.5 // Default
-        let comfort = isQuiet ? 0.8 : 0.3
+        // For quiet reports: average should be < 0.3 to show as green (excellent)
+        // For noisy reports: average should be >= 0.7 to show as red/orange
+        let noise = isQuiet ? 0.15 : 0.85
+        let crowds = isQuiet ? 0.20 : 0.75
+        let lighting = isQuiet ? 0.35 : 0.60 // Adjusted based on context
+        let comfort = isQuiet ? 0.85 : 0.25
 
         let report = Report(
             noise: noise,
