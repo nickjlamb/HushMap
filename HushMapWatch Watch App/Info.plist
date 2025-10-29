@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>HushMap</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    </array>
+    <key>WKCompanionAppBundleIdentifier</key>
+    <string>com.nicklamb.HushMap</string>
+    <key>WKApplication</key>
+    <true/>
+    <key>WKWatchOnly</key>
+    <true/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>HushMap needs your location to find quiet places nearby and log noise levels at your current location.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>HushMap needs your location to find quiet places nearby and provide background updates about noise levels.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>HushMap uses environmental sound levels from your Apple Watch to help you track and log noise exposure in different locations.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>HushMap records environmental sound level data to help you track noise exposure and find quiet, comfortable places.</string>
+</dict>
+</plist>
