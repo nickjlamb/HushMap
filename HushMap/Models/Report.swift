@@ -36,6 +36,11 @@ class Report {
     var confidence: Double? // Location resolution confidence (0.0-1.0)
     var openNow: Bool? // Business hours status from Google Places API
 
+    // User attribution fields (for community reports)
+    var submittedByUserId: String? // Firebase user ID or "anonymous"
+    var submittedByUserName: String? // Display name of user who submitted
+    var submittedByUserProfileImageURL: String? // Optional profile image URL
+
     // Relationship to user (owner of the report)
     @Relationship(inverse: \User.reports) var user: User?
 

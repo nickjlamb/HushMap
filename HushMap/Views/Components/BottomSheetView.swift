@@ -8,7 +8,7 @@ struct BottomSheetView: View {
         case peek    // 60pt height - handle + hint
         case half    // 50% screen - quick filters + recent
         case full    // 90% screen - all features
-        
+
         func height(for screenHeight: CGFloat) -> CGFloat {
             switch self {
             case .peek: return 160
@@ -16,7 +16,7 @@ struct BottomSheetView: View {
             case .full: return screenHeight * 0.9
             }
         }
-        
+
         var cornerRadius: CGFloat {
             switch self {
             case .peek: return 16
@@ -25,20 +25,36 @@ struct BottomSheetView: View {
             }
         }
     }
+
+    // MARK: - Modal Sheet Types
+    enum ModalSheet: Identifiable {
+        case profile
+        case legend
+        case about
+
+        var id: Int {
+            switch self {
+            case .profile: return 1
+            case .legend: return 2
+            case .about: return 3
+            }
+        }
+    }
     
     // MARK: - Properties
     @Binding var currentState: SheetState
     @State private var dragOffset: CGFloat = 0
     @State private var lastDragValue: CGFloat = 0
-    
+    @State private var activeModalSheet: ModalSheet?
+
     // Screen dimensions
     @Environment(\.safeAreaInsets) private var safeAreaInsets
     private let screenHeight = UIScreen.main.bounds.height
-    
+
     // Accessibility & Theme
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("highContrastMode") private var highContrastMode = false
-    
+
     // Existing app state (passed from parent)
     @Binding var showLegend: Bool
     @Binding var showAbout: Bool
@@ -115,39 +131,59 @@ struct BottomSheetView: View {
             )
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: currentState)
             .animation(.spring(response: 0.3, dampingFraction: 0.9), value: dragOffset)
-            .sheet(isPresented: $showProfile) {
-                NavigationView {
-                    ProfileView()
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") {
-                                    showProfile = false
-                                }
-                                .fontWeight(.medium)
-                            }
-                        }
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .interactiveDismissDisabled(false) // Allow swipe despite having Done button
-            }
-            .sheet(isPresented: $showLegend) {
-                NavigationView {
-                    MapLegendSheetView()
-                        .navigationTitle("Map Legend")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") {
-                                    showLegend = false
+            .sheet(item: $activeModalSheet) { sheet in
+                switch sheet {
+                case .profile:
+                    NavigationView {
+                        ProfileView()
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Done") {
+                                        activeModalSheet = nil
+                                    }
+                                    .fontWeight(.medium)
                                 }
                             }
-                        }
+                    }
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .interactiveDismissDisabled(false)
+
+                case .legend:
+                    NavigationView {
+                        MapLegendSheetView()
+                            .navigationTitle("Map Legend")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Done") {
+                                        activeModalSheet = nil
+                                    }
+                                }
+                            }
+                    }
+                    .presentationDetents([.medium])
+
+                case .about:
+                    AboutView()
                 }
-                .presentationDetents([.medium])
             }
-            .sheet(isPresented: $showAbout) {
-                AboutView()
+            .onChange(of: showProfile) { _, newValue in
+                if newValue { activeModalSheet = .profile }
+                else if activeModalSheet == .profile { activeModalSheet = nil }
+            }
+            .onChange(of: showLegend) { _, newValue in
+                if newValue { activeModalSheet = .legend }
+                else if activeModalSheet == .legend { activeModalSheet = nil }
+            }
+            .onChange(of: showAbout) { _, newValue in
+                if newValue { activeModalSheet = .about }
+                else if activeModalSheet == .about { activeModalSheet = nil }
+            }
+            .onChange(of: activeModalSheet) { _, newValue in
+                showProfile = (newValue == .profile)
+                showLegend = (newValue == .legend)
+                showAbout = (newValue == .about)
             }
         }
     }

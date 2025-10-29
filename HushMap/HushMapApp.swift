@@ -3,9 +3,13 @@ import SwiftData
 import CoreLocation
 import GoogleMaps
 import GoogleSignIn
+import FirebaseCore
+import FirebaseFirestore
 
 @main
 struct HushMapApp: App {
+    @State private var reportsListener: ListenerRegistration?
+
     // Add the location usage description to Info.plist
     init() {
         if Bundle.main.object(forInfoDictionaryKey: "NSLocationWhenInUseUsageDescription") == nil {
@@ -14,10 +18,13 @@ struct HushMapApp: App {
             // Warning: NSLocationWhenInUseUsageDescription not found in Info.plist
             #endif
         }
-        
+
+        // Initialize Firebase
+        FirebaseApp.configure()
+
         // Initialize Google Maps
         GoogleMapsService.shared.configure()
-        
+
         // Configure Google Sign In
         guard let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
@@ -27,7 +34,7 @@ struct HushMapApp: App {
             #endif
             return
         }
-        
+
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
     }
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
@@ -118,6 +125,43 @@ struct HushMapApp: App {
 
                         // Configure Watch connectivity
                         WatchConnectivityService.shared.configure(modelContext: modelContext)
+
+                        // Download community reports from Firestore (initial load)
+                        Task {
+                            do {
+                                let syncService = ReportSyncService.shared
+                                let downloadedCount = try await syncService.downloadReports(to: modelContext)
+                                print("✅ Downloaded \(downloadedCount) community reports from Firestore")
+                            } catch {
+                                print("⚠️ Failed to download community reports: \(error.localizedDescription)")
+                            }
+                        }
+
+                        // Set up real-time listener for new reports
+                        let firestoreService = FirestoreService.shared
+                        reportsListener = firestoreService.listenToReports { firestoreReports in
+                            Task { @MainActor in
+                                // Get existing report IDs to avoid duplicates
+                                let descriptor = FetchDescriptor<Report>()
+                                guard let existingReports = try? modelContext.fetch(descriptor) else { return }
+                                let existingIds = Set(existingReports.map { $0.id.uuidString })
+
+                                var newCount = 0
+                                // Import new reports
+                                for firestoreReport in firestoreReports {
+                                    if !existingIds.contains(firestoreReport.id) {
+                                        let report = firestoreReport.toReport()
+                                        modelContext.insert(report)
+                                        newCount += 1
+                                    }
+                                }
+
+                                if newCount > 0 {
+                                    try? modelContext.save()
+                                    print("🔄 Real-time sync: Added \(newCount) new reports")
+                                }
+                            }
+                        }
 
                         // Listen for reset welcome notification
                         NotificationCenter.default.addObserver(

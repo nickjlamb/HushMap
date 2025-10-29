@@ -170,14 +170,23 @@ struct SingleScreenMapView: View {
         
         return groupedReports.compactMap { (locationId, reports) in
             guard let firstReport = reports.first else { return nil }
-            
+
             // Calculate aggregated values
             let averageNoise = reports.map(\.noise).reduce(0, +) / Double(reports.count)
             let averageCrowds = reports.map(\.crowds).reduce(0, +) / Double(reports.count)
             let averageLighting = reports.map(\.lighting).reduce(0, +) / Double(reports.count)
             let averageQuietScore = reports.map(\.quietScore).reduce(0, +) / reports.count
             let latestTimestamp = reports.map(\.timestamp).max() ?? Date()
-            
+
+            // For clustered reports, show the most recent contributor
+            let mostRecentReport = reports.max(by: { $0.timestamp < $1.timestamp }) ?? firstReport
+            let contributorName: String?
+            if reports.count > 1 {
+                contributorName = "Multiple Contributors"
+            } else {
+                contributorName = mostRecentReport.submittedByUserName ?? "You"
+            }
+
             return ReportPin(
                 coordinate: firstReport.coordinate,
                 displayName: firstReport.displayName,
@@ -188,7 +197,9 @@ struct SingleScreenMapView: View {
                 averageCrowds: averageCrowds,
                 averageLighting: averageLighting,
                 averageQuietScore: averageQuietScore,
-                latestTimestamp: latestTimestamp
+                latestTimestamp: latestTimestamp,
+                submittedByUserName: contributorName,
+                submittedByUserProfileImageURL: reports.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil
             )
         }
     }

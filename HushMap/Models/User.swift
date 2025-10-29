@@ -54,6 +54,25 @@ final class User {
     func hasBadge(ofType type: BadgeType) -> Bool {
         return badges.contains { $0.title == type.rawValue }
     }
+
+    // Remove duplicate badges (keep only the earliest earned badge of each type)
+    func removeDuplicateBadges() {
+        var seenTitles: Set<String> = []
+        var badgesToKeep: [Badge] = []
+
+        // Sort by earned date to keep the earliest
+        let sortedBadges = badges.sorted { $0.earnedDate < $1.earnedDate }
+
+        for badge in sortedBadges {
+            if !seenTitles.contains(badge.title) {
+                seenTitles.insert(badge.title)
+                badgesToKeep.append(badge)
+            }
+        }
+
+        // Update the badges array with deduplicated list
+        badges = badgesToKeep
+    }
     
     // Add points to the user
     func addPoints(_ pointsToAdd: Int) {
@@ -62,17 +81,30 @@ final class User {
     
     // Award a badge if not already earned
     func awardBadge(ofType type: BadgeType) -> Badge? {
-        // Check if badge already awarded
-        if !hasBadge(ofType: type) {
-            let badge = Badge(
-                title: type.rawValue,
-                description: type.description,
-                iconName: type.iconName
-            )
-            badges.append(badge)
-            return badge
+        // Double-check if badge already awarded (defensive programming)
+        if hasBadge(ofType: type) {
+            return nil
         }
-        return nil
+
+        // Get bonus points for this badge
+        let bonusPoints = type.bonusPoints
+
+        // Create and associate the badge
+        let badge = Badge(
+            title: type.rawValue,
+            description: type.description,
+            iconName: type.iconName,
+            bonusPoints: bonusPoints
+        )
+
+        // Award bonus points to user
+        self.addPoints(bonusPoints)
+
+        // Explicitly set the relationship
+        badge.user = self
+        badges.append(badge)
+
+        return badge
     }
     
     // Calculate points for a report

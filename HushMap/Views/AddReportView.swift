@@ -246,21 +246,39 @@ struct AddReportView: View {
         
         // Get the current user (or create one if needed)
         let currentUser = getCurrentOrCreateUser()
-        
+
         // Associate the report with the current user
         newReport.user = currentUser
-        
+
+        // Set user attribution for community sharing
+        let authService = AuthenticationService.shared
+        newReport.submittedByUserId = authService.currentUser?.id ?? "anonymous"
+        newReport.submittedByUserName = authService.currentUser?.name ?? "Anonymous"
+        newReport.submittedByUserProfileImageURL = authService.currentUser?.profileImageURL?.absoluteString
+
         // Insert and process the report for gamification
         modelContext.insert(newReport)
-        
+
         // Process the report for points and badges
         let badgeService = BadgeService(modelContext: modelContext)
         let result = badgeService.processNewReport(newReport, for: currentUser)
-        
+
         // Update sensory profile with new report data
         let profileService = SensoryProfileService(modelContext: modelContext)
         profileService.updateProfile(with: newReport, for: currentUser)
-        
+
+        // Upload report to Firestore for community sharing
+        Task {
+            do {
+                let syncService = ReportSyncService.shared
+                try await syncService.syncReport(newReport)
+                print("✅ Report synced to Firestore")
+            } catch {
+                print("⚠️ Failed to sync report to Firestore: \(error.localizedDescription)")
+                // Don't block the user - report is still saved locally
+            }
+        }
+
         // Save earned badges and points for notifications
         earnedPoints = result.points
         

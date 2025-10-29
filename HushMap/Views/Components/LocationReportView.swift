@@ -184,17 +184,37 @@ struct LocationReportView: View {
                 .foregroundColor(.hushPrimaryText)
             
             VStack(alignment: .leading, spacing: 8) {
+                // User attribution
+                if let userName = pin.submittedByUserName {
+                    HStack {
+                        Image(systemName: "person.circle.fill")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 20)
+
+                        Text("Submitted by:")
+                            .font(.subheadline)
+                            .foregroundColor(.hushSecondaryText)
+
+                        Spacer()
+
+                        Text(userName)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.hushBackground)
+                    }
+                }
+
                 HStack {
                     Image(systemName: "clock")
                         .foregroundColor(.hushSecondaryText)
                         .frame(width: 20)
-                    
+
                     Text("Last updated:")
                         .font(.subheadline)
                         .foregroundColor(.hushSecondaryText)
-                    
+
                     Spacer()
-                    
+
                     Text(pin.latestTimestamp, style: .relative)
                         .font(.subheadline)
                         .fontWeight(.medium)
@@ -346,7 +366,9 @@ struct MetricCard: View {
             averageCrowds: 0.3,
             averageLighting: 0.5,
             averageQuietScore: 75,
-            latestTimestamp: Date()
+            latestTimestamp: Date(),
+            submittedByUserName: "Sarah Johnson",
+            submittedByUserProfileImageURL: nil
         )
     )
 }

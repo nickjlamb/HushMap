@@ -554,6 +554,15 @@ struct HomeMapView: View {
                     // Calculate average confidence
                     let avgConfidence = reportsAtLocation.compactMap { $0.confidence }.reduce(0, +) / Double(max(reportsAtLocation.compactMap { $0.confidence }.count, 1))
                     
+                    // For clustered reports, show the most recent contributor
+                    let mostRecentReport = reportsAtLocation.max(by: { $0.timestamp < $1.timestamp }) ?? representativeReport
+                    let contributorName: String?
+                    if reportsAtLocation.count > 1 {
+                        contributorName = "Multiple Contributors"
+                    } else {
+                        contributorName = mostRecentReport.submittedByUserName ?? "You"
+                    }
+
                     let pin = ReportPin(
                         coordinate: representativeReport.coordinate,
                         displayName: displayName,
@@ -564,7 +573,9 @@ struct HomeMapView: View {
                         averageCrowds: avgCrowds,
                         averageLighting: avgLighting,
                         averageQuietScore: avgQuietScore,
-                        latestTimestamp: reportsAtLocation.max(by: { $0.timestamp < $1.timestamp })?.timestamp ?? representativeReport.timestamp
+                        latestTimestamp: mostRecentReport.timestamp,
+                        submittedByUserName: contributorName,
+                        submittedByUserProfileImageURL: reportsAtLocation.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil
                     )
                     pins.append(pin)
                 }
@@ -582,7 +593,9 @@ struct HomeMapView: View {
                     averageCrowds: report.crowds,
                     averageLighting: report.lighting,
                     averageQuietScore: report.quietScore,
-                    latestTimestamp: report.timestamp
+                    latestTimestamp: report.timestamp,
+                    submittedByUserName: report.submittedByUserName ?? "You",
+                    submittedByUserProfileImageURL: report.submittedByUserProfileImageURL
                 )
             }
         }
@@ -616,7 +629,9 @@ struct ReportPin: Identifiable {
     let averageLighting: Double
     let averageQuietScore: Int
     let latestTimestamp: Date
-    
+    let submittedByUserName: String? // Who submitted this report
+    let submittedByUserProfileImageURL: String? // User profile image
+
     var averageSensoryLevel: Double {
         (averageNoise + averageCrowds + averageLighting) / 3.0
     }

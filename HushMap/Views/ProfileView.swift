@@ -45,7 +45,10 @@ struct ProfileView: View {
                 
                 // Badges Section
                 badgesSectionView
-                
+
+                // Next Achievement Section
+                nextAchievementSectionView
+
                 // Settings Section
                 settingsSectionView
             }
@@ -61,6 +64,14 @@ struct ProfileView: View {
             }
             // Restore previous sign in
             authService.restorePreviousSignIn()
+
+            // Clean up any duplicate badges after view is fully presented
+            Task { @MainActor in
+                // Small delay to ensure sheet is fully presented
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                currentUser.removeDuplicateBadges()
+                try? modelContext.save()
+            }
         }
         .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -247,10 +258,10 @@ struct ProfileView: View {
                 Text("Achievements")
                     .font(.headline)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
-                
-                Text("\(currentUser.badges.count) of \(BadgeType.allCases.count)")
+
+                Text("\(BadgeType.allCases.filter { currentUser.hasBadge(ofType: $0) }.count) of \(BadgeType.allCases.count)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -298,20 +309,36 @@ struct ProfileView: View {
     }
     
     private func badgeView(_ badge: Badge) -> some View {
-        VStack {
-            Image(systemName: badge.iconName)
-                .font(.largeTitle)
-                .foregroundColor(.purple)
-                .frame(width: 60, height: 60)
-                .background(Circle().fill(Color.purple.opacity(0.2)))
-            
+        VStack(spacing: 8) {
+            // Badge Icon with Points Badge
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: badge.iconName)
+                    .font(.largeTitle)
+                    .foregroundColor(.purple)
+                    .frame(width: 60, height: 60)
+                    .background(Circle().fill(Color.purple.opacity(0.2)))
+
+                // Points badge
+                if badge.bonusPoints > 0 {
+                    Text("+\(badge.bonusPoints)")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow)
+                        .cornerRadius(8)
+                        .offset(x: 8, y: -4)
+                }
+            }
+
             Text(badge.title)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-            
+
             Text(badge.earnedDate.formatted(date: .abbreviated, time: .omitted))
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -324,7 +351,7 @@ struct ProfileView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(badge.title) badge earned on \(badge.earnedDate.formatted(date: .long, time: .omitted))")
-        .accessibilityHint(badge.descriptionText)
+        .accessibilityHint("\(badge.descriptionText). Awarded \(badge.bonusPoints) bonus points")
     }
     
     private func lockedBadgeView(_ type: BadgeType) -> some View {
@@ -334,14 +361,14 @@ struct ProfileView: View {
                 .foregroundColor(.gray)
                 .frame(width: 60, height: 60)
                 .background(Circle().fill(Color.gray.opacity(0.2)))
-            
+
             Text(type.rawValue)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.gray)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-            
+
             Text("Not yet earned")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -356,6 +383,113 @@ struct ProfileView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(type.rawValue) badge not yet earned")
         .accessibilityHint(type.description)
+    }
+
+    private var nextAchievementSectionView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Next Achievements")
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            let badgeService = BadgeService(modelContext: modelContext)
+            let progressList = badgeService.getBadgeProgress(for: currentUser)
+
+            if progressList.isEmpty {
+                // All badges earned!
+                VStack(spacing: 12) {
+                    Image(systemName: "trophy.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.yellow)
+
+                    Text("All Achievements Unlocked!")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    Text("You've earned every badge available.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.yellow.opacity(0.1))
+                )
+            } else {
+                // Show top 3 closest achievements
+                VStack(spacing: 12) {
+                    ForEach(Array(progressList.prefix(3))) { progress in
+                        badgeProgressCard(progress)
+                    }
+                }
+            }
+        }
+    }
+
+    private func badgeProgressCard(_ progress: BadgeProgress) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: progress.badgeType.iconName)
+                    .font(.title2)
+                    .foregroundColor(.hushBackground)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(progress.badgeType.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+
+                        // Points reward badge
+                        Text("+\(progress.badgeType.bonusPoints)")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.yellow)
+                            .cornerRadius(4)
+                    }
+
+                    Text(progress.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text(progress.progressText)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.hushBackground)
+            }
+
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 8)
+
+                    // Progress
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.hushBackground)
+                        .frame(width: geometry.size.width * progress.percentage, height: 8)
+                }
+            }
+            .frame(height: 8)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.hushMapLines.opacity(0.15))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(progress.badgeType.rawValue): \(progress.progressText) complete. Earn \(progress.badgeType.bonusPoints) points")
+        .accessibilityValue("\(Int(progress.percentage * 100)) percent")
     }
     
     private var settingsSectionView: some View {
