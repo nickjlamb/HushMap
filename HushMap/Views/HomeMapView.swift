@@ -5,31 +5,64 @@ import SwiftData
 import GoogleMaps
 import Combine
 
+enum HomeMapSheet: Identifiable, Equatable {
+    case about
+    case placeSearch
+    case placePrediction(PlaceDetails)
+    case mapTapPrediction(PlaceDetails)
+    case pinDetail(ReportPin)
+    
+    var id: String {
+        switch self {
+        case .about: return "about"
+        case .placeSearch: return "placeSearch"
+        case .placePrediction(let place): return "placePrediction-\(place.name)-\(place.coordinate.latitude)-\(place.coordinate.longitude)"
+        case .mapTapPrediction(let place): return "mapTapPrediction-\(place.name)-\(place.coordinate.latitude)-\(place.coordinate.longitude)"
+        case .pinDetail(let pin): return "pinDetail-\(pin.id)"
+        }
+    }
+    
+    static func == (lhs: HomeMapSheet, rhs: HomeMapSheet) -> Bool {
+        switch (lhs, rhs) {
+        case (.about, .about), (.placeSearch, .placeSearch):
+            return true
+        case (.placePrediction(let place1), .placePrediction(let place2)):
+            return place1.name == place2.name && place1.coordinate.latitude == place2.coordinate.latitude && place1.coordinate.longitude == place2.coordinate.longitude
+        case (.mapTapPrediction(let place1), .mapTapPrediction(let place2)):
+            return place1.name == place2.name && place1.coordinate.latitude == place2.coordinate.latitude && place1.coordinate.longitude == place2.coordinate.longitude
+        case (.pinDetail(let pin1), (.pinDetail(let pin2))):
+            return pin1.id == pin2.id
+        default:
+            return false
+        }
+    }
+}
+
 struct HomeMapView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var errorState = ErrorStateViewModel()
     @StateObject private var deviceCapability = DeviceCapabilityService.shared
+    @StateObject private var locationResolver = ReportLocationResolver()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query private var reports: [Report]
     // Note: Removed Apple Maps position state - using currentCoordinate for Google Maps
     @State private var useClustering = true
     @State private var sortByRecent = false
-    @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+    @State private var startDate = DateComponents(calendar: Calendar.current, year: 2025, month: 1, day: 1).date ?? Date()
     @State private var endDate = Date()
     @State private var maxNoiseThreshold: Double = 1.0
     @State private var maxCrowdThreshold: Double = 1.0
     @State private var maxLightingThreshold: Double = 1.0
-    @State private var showAbout = false
     
-    // States for place search
-    @State private var showingPlaceSearch = false
+    // Consolidated sheet state
+    @State private var activeSheet: HomeMapSheet?
+    
+    // States for place search and predictions
     @State private var selectedPlace: PlaceDetails?
-    @State private var showingPlacePrediction = false
     @State private var tempPin: PlaceDetails?
     
     // States for map tap predictions
     @State private var isLookingUpLocation = false
-    @State private var showingMapTapPrediction = false
     
     // States for temp pin display and report interaction
     @State private var showingTempPin = false
@@ -38,10 +71,12 @@ struct HomeMapView: View {
     
     // States for pin interaction
     @State private var selectedPin: ReportPin?
-    @State private var showingPinDetail = false
     
     // State for legend
     @State private var showLegend = false
+    
+    // State for hamburger menu
+    @State private var showHamburgerMenu = false
     
     // State for expandable header
     @State private var headerExpanded = false
@@ -77,7 +112,7 @@ struct HomeMapView: View {
                 pins: filteredPins,
                 onPinTap: { pin in
                     selectedPin = pin
-                    showingPinDetail = true
+                    activeSheet = .pinDetail(pin)
                 },
                 tempPin: tempPin,
                 onMapTap: { coordinate in
@@ -90,13 +125,19 @@ struct HomeMapView: View {
                     let place = PlaceDetails(name: name, address: "", coordinate: location)
                     tempPin = place
                     self.selectedPlace = place
-                    self.showingMapTapPrediction = true
+                    self.activeSheet = .mapTapPrediction(place)
                 }
             )
             .ignoresSafeArea(.all, edges: .all)
             .onAppear {
                 // Request location permission (checks services asynchronously)
                 locationManager.requestLocationPermission()
+                
+                // If location is already available, use it immediately
+                if let location = locationManager.lastLocation, !hasInitializedLocation {
+                    currentCoordinate = location
+                    hasInitializedLocation = true
+                }
                 
                 // Listen for coordinate centering notifications from Nearby view
                 NotificationCenter.default.addObserver(
@@ -114,6 +155,13 @@ struct HomeMapView: View {
                 if let newLocation = newLocation, !hasInitializedLocation {
                     currentCoordinate = newLocation
                     hasInitializedLocation = true
+                    
+                    // Post notification to animate camera to user location with proper zoom
+                    NotificationCenter.default.post(
+                        name: Notification.Name("CenterMapOnCoordinate"),
+                        object: nil,
+                        userInfo: ["coordinate": newLocation]
+                    )
                 }
             }
             .onDisappear {
@@ -131,6 +179,54 @@ struct HomeMapView: View {
             }
             .padding(.trailing, 16)
             .padding(.bottom, 120) // Account for tab bar
+            
+            // Hamburger Menu
+            if showHamburgerMenu {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
+                            showHamburgerMenu = false
+                        }
+                    }
+                    .transition(.opacity)
+                
+                VStack {
+                    HStack {
+                        HamburgerMenuView(
+                            isPresented: $showHamburgerMenu,
+                            showLegend: $showLegend,
+                            showAbout: .init(
+                                get: { activeSheet == .about },
+                                set: { shouldShow in
+                                    if shouldShow {
+                                        activeSheet = .about
+                                    } else {
+                                        activeSheet = nil
+                                    }
+                                }
+                            ),
+                            currentMapStyle: $googleMapType,
+                            onMapStyleSelected: { newStyle in
+                                googleMapType = newStyle
+                            },
+                            mapStyleIcon: mapStyleIcon,
+                            mapStyleLabel: mapStyleLabel
+                        )
+                        .frame(width: 280, height: 240)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
+                        
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(.leading, 16)
+                .padding(.top, 120)
+                .animation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration()), value: showHamburgerMenu)
+            }
 
             VStack {
                 expandableHeader
@@ -148,36 +244,45 @@ struct HomeMapView: View {
                 openAppSettings()
             }
         )
-        .sheet(isPresented: $showAbout) {
-            AboutView()
-        }
-        .sheet(isPresented: $showingPlaceSearch) {
-            PlaceSearchViewWrapper(
-                onPlaceSelected: { place in
-                    handlePlaceSelection(place)
-                    showingPlaceSearch = false
-                }
-            )
-        }
-        .sheet(isPresented: $showingPlacePrediction) {
-            if let place = selectedPlace {
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .about:
+                AboutView()
+            case .placeSearch:
+                PlaceSearchViewWrapper(
+                    onPlaceSelected: { place in
+                        handlePlaceSelection(place)
+                        activeSheet = nil
+                    }
+                )
+            case .placePrediction(let place):
                 PlacePredictionView(
                     place: place, 
-                    isPresented: $showingPlacePrediction
+                    isPresented: .init(
+                        get: { activeSheet != nil },
+                        set: { _ in activeSheet = nil }
+                    )
                 )
-            }
-        }
-        .sheet(isPresented: $showingMapTapPrediction) {
-            if let place = selectedPlace {
+            case .mapTapPrediction(let place):
                 PlacePredictionView(
                     place: place, 
-                    isPresented: $showingMapTapPrediction
+                    isPresented: .init(
+                        get: { activeSheet != nil },
+                        set: { _ in activeSheet = nil }
+                    )
                 )
-            }
-        }
-        .sheet(isPresented: $showingPinDetail) {
-            if let pin = selectedPin {
+            case .pinDetail(let pin):
                 PinDetailView(pin: pin)
+            }
+        }
+        .task {
+            // Resolve locations for reports when view appears
+            await locationResolver.resolveLocationsForReports(Array(reports))
+        }
+        .onChange(of: reports.count) { _, _ in
+            // Resolve locations when new reports are added
+            Task {
+                await locationResolver.resolveLocationsForReports(Array(reports))
             }
         }
     }
@@ -192,7 +297,7 @@ struct HomeMapView: View {
         
         // Show the prediction sheet after a brief delay to allow the map to update
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            showingPlacePrediction = true
+            activeSheet = .placePrediction(selectedPlace!)
         }
     }
     
@@ -207,7 +312,7 @@ struct HomeMapView: View {
         // Set the place and show prediction
         self.selectedPlace = place
         self.tempPin = place
-        self.showingMapTapPrediction = true
+        self.activeSheet = .mapTapPrediction(place)
     }
     
     // Google Maps style helper properties
@@ -246,121 +351,92 @@ struct HomeMapView: View {
                 }) {
                     Image(systemName: headerExpanded ? "chevron.up" : "chevron.down")
                         .font(.caption)
-                        .foregroundColor(.hushBackground)
-                        .frame(width: 20)
+                        .foregroundColor(.hushPrimaryText)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
                 .accessibilityLabel(headerExpanded ? "Collapse header" : "Expand header")
                 
                 Spacer()
                 
                 // Control buttons
-                HStack(spacing: 24) {
-                    // Legend button
-                    VStack(spacing: 4) {
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
-                                showLegend.toggle()
+                HStack(alignment: .bottom, spacing: 16) {
+                    // Hamburger menu button
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
+                            // Close filters if open, then open menu
+                            if headerExpanded {
+                                headerExpanded = false
                             }
-                        }) {
-                            Image(systemName: "list.bullet.rectangle.fill")
-                                .font(.title2)
-                                .foregroundColor(.hushBackground)
+                            showHamburgerMenu.toggle()
                         }
-                        .accessibilityLabel("Show pin legend")
-                        
-                        if headerExpanded {
-                            Text("Legend")
-                                .font(.caption2)
-                                .foregroundColor(.hushBackground.opacity(0.8))
+                    }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.title2)
+                                .foregroundColor(.hushPrimaryText)
+                                .frame(height: 28)
+                            
+                            Text("Menu")
+                                .hushCaption()
+                                .foregroundColor(.hushPrimaryText.opacity(0.8))
                                 .minimumScaleFactor(0.8)
                                 .lineLimit(1)
                         }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
-                    
-                    // Map Style button
-                    VStack(spacing: 4) {
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
-                                cycleMapStyle()
-                            }
-                        }) {
-                            Image(systemName: mapStyleIcon)
-                                .font(.title2)
-                                .foregroundColor(.hushBackground)
-                        }
-                        .accessibilityLabel("Change map style")
-                        
-                        if headerExpanded {
-                            Text(mapStyleLabel)
-                                .font(.caption2)
-                                .foregroundColor(.hushBackground.opacity(0.8))
-                                .minimumScaleFactor(0.8)
-                                .lineLimit(1)
-                        }
-                    }
+                    .accessibilityLabel("Open menu")
                     
                     // Filters button
-                    VStack(spacing: 4) {
-                        Button(action: {
-                            // This will expand the header to show filters
-                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
-                                headerExpanded.toggle()
+                    Button(action: {
+                        // Close menu if open, then toggle filters
+                        withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
+                            if showHamburgerMenu {
+                                showHamburgerMenu = false
                             }
-                        }) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.title2)
-                                .foregroundColor(.hushBackground)
+                            headerExpanded.toggle()
                         }
-                        .accessibilityLabel("Show filters")
-                        
-                        if headerExpanded {
+                    }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.title2)
+                                .foregroundColor(.hushPrimaryText)
+                                .frame(height: 28)
+                            
                             Text("Filters")
-                                .font(.caption2)
-                                .foregroundColor(.hushBackground.opacity(0.8))
+                                .hushCaption()
+                                .foregroundColor(.hushPrimaryText.opacity(0.8))
                                 .minimumScaleFactor(0.8)
                                 .lineLimit(1)
                         }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
+                    .accessibilityLabel("Show filters")
                     
                     // Search button
-                    VStack(spacing: 4) {
-                        Button(action: {
-                            showingPlaceSearch = true
-                        }) {
+                    Button(action: {
+                        // Close filters if open, then show search
+                        if headerExpanded {
+                            withAnimation(.easeInOut(duration: deviceCapability.getOptimalAnimationDuration())) {
+                                headerExpanded = false
+                            }
+                        }
+                        activeSheet = .placeSearch
+                    }) {
+                        VStack(spacing: 2) {
                             Image(systemName: "magnifyingglass")
                                 .font(.title2)
-                                .foregroundColor(.hushBackground)
-                        }
-                        .accessibilityLabel("Search for places")
-                        
-                        if headerExpanded {
+                                .foregroundColor(.hushPrimaryText)
+                                .frame(height: 28)
+                            
                             Text("Search")
-                                .font(.caption2)
-                                .foregroundColor(.hushBackground.opacity(0.8))
+                                .hushCaption()
+                                .foregroundColor(.hushPrimaryText.opacity(0.8))
                                 .minimumScaleFactor(0.8)
                                 .lineLimit(1)
                         }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
-                    
-                    // About button
-                    VStack(spacing: 4) {
-                        Button(action: {
-                            showAbout = true
-                        }) {
-                            Image(systemName: "info.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.hushBackground)
-                        }
-                        .accessibilityLabel("About HushMap")
-                        
-                        if headerExpanded {
-                            Text("About")
-                                .font(.caption2)
-                                .foregroundColor(.hushBackground.opacity(0.8))
-                                .minimumScaleFactor(0.8)
-                                .lineLimit(1)
-                        }
-                    }
+                    .accessibilityLabel("Search for places")
                 }
                 
                 Spacer()
@@ -371,8 +447,9 @@ struct HomeMapView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.hushMapShape.opacity(0.9))
+            .background(Color.hushOffWhite.opacity(0.95))
             .cornerRadius(headerExpanded ? 12 : 16)
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             // Expanded content - filters
             if headerExpanded {
@@ -418,7 +495,7 @@ struct HomeMapView: View {
                             maxNoiseThreshold = 1.0
                             maxCrowdThreshold = 1.0
                             maxLightingThreshold = 1.0
-                            startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+                            startDate = DateComponents(calendar: Calendar.current, year: 2025, month: 1, day: 1).date ?? Date()
                             endDate = Date()
                             useClustering = true
                             sortByRecent = false
@@ -430,7 +507,7 @@ struct HomeMapView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
-                .background(Color.hushMapShape.opacity(0.9))
+                .background(Color.hushOffWhite.opacity(0.95))
                 .cornerRadius(12)
             }
         }
@@ -470,12 +547,23 @@ struct HomeMapView: View {
                     let avgCrowds = reportsAtLocation.map { $0.crowds }.reduce(0, +) / Double(reportsAtLocation.count)
                     let avgLighting = reportsAtLocation.map { $0.lighting }.reduce(0, +) / Double(reportsAtLocation.count)
                     
+                    let displayName = representativeReport.displayName ?? reportsAtLocation.compactMap { $0.displayName }.first
+                    let displayTier = representativeReport.displayTier ?? reportsAtLocation.compactMap { $0.displayTier }.first
+                    let avgQuietScore = Int((reportsAtLocation.map { $0.quietScore }.reduce(0, +)) / reportsAtLocation.count)
+                    
+                    // Calculate average confidence
+                    let avgConfidence = reportsAtLocation.compactMap { $0.confidence }.reduce(0, +) / Double(max(reportsAtLocation.compactMap { $0.confidence }.count, 1))
+                    
                     let pin = ReportPin(
                         coordinate: representativeReport.coordinate,
+                        displayName: displayName,
+                        displayTier: displayTier,
+                        confidence: avgConfidence > 0 ? avgConfidence : nil,
                         reportCount: reportsAtLocation.count,
                         averageNoise: avgNoise,
                         averageCrowds: avgCrowds,
                         averageLighting: avgLighting,
+                        averageQuietScore: avgQuietScore,
                         latestTimestamp: reportsAtLocation.max(by: { $0.timestamp < $1.timestamp })?.timestamp ?? representativeReport.timestamp
                     )
                     pins.append(pin)
@@ -486,10 +574,14 @@ struct HomeMapView: View {
             pins = filtered.map { report in
                 ReportPin(
                     coordinate: report.coordinate,
+                    displayName: report.displayName,
+                    displayTier: report.displayTier,
+                    confidence: report.confidence,
                     reportCount: 1,
                     averageNoise: report.noise,
                     averageCrowds: report.crowds,
                     averageLighting: report.lighting,
+                    averageQuietScore: report.quietScore,
                     latestTimestamp: report.timestamp
                 )
             }
@@ -515,10 +607,14 @@ struct HomeMapView: View {
 struct ReportPin: Identifiable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
+    let displayName: String?
+    let displayTier: DisplayTier?
+    let confidence: Double? // Location resolution confidence
     let reportCount: Int
     let averageNoise: Double
     let averageCrowds: Double
     let averageLighting: Double
+    let averageQuietScore: Int
     let latestTimestamp: Date
     
     var averageSensoryLevel: Double {
@@ -543,6 +639,48 @@ struct ReportPin: Identifiable {
         case 0.7..<0.9: return "Poor"
         default: return "Very Poor"
         }
+    }
+    
+    var friendlyDisplayName: String {
+        guard let displayName = displayName else { return "Unknown area" }
+        
+        switch displayTier {
+        case .poi:
+            // Apply hedged copy for low confidence POIs
+            if let confidence = confidence, confidence < 0.8 {
+                return "near \(displayName)"
+            }
+            return displayName
+        case .street:
+            return displayName  
+        case .area:
+            return displayName.hasSuffix(" area") ? displayName : "\(displayName) area"
+        case nil:
+            return "Unknown area"
+        }
+    }
+    
+    // Accessibility-friendly display name with additional context
+    var accessibleDisplayName: String {
+        let baseName = friendlyDisplayName
+        
+        switch displayTier {
+        case .area:
+            return "Area label: \(baseName)"
+        case .poi:
+            if let confidence = confidence, confidence < 0.8 {
+                return "Approximate location: \(baseName)"
+            }
+            return baseName
+        case .street, nil:
+            return baseName
+        }
+    }
+    
+    // Compact display for small surfaces
+    var compactDisplay: String {
+        guard let displayName = displayName else { return "Unknown" }
+        return LabelFormatter.compact(displayName, max: 18)
     }
 }
 
@@ -667,13 +805,36 @@ struct PinDetailView: View {
                                 .font(.title2)
                             
                             VStack(alignment: .leading) {
-                                Text("Location Report")
+                                // Use LabelFormatter.shortTwoLine for proper truncation
+                                let (primaryLabel, _) = LabelFormatter.shortTwoLine(
+                                    primary: pin.friendlyDisplayName,
+                                    secondary: nil,
+                                    maxPrimary: 40,
+                                    maxSecondary: 40
+                                )
+                                
+                                Text(primaryLabel)
                                     .font(.title2)
                                     .fontWeight(.bold)
+                                    .accessibilityLabel(pin.accessibleDisplayName)
                                 
-                                Text("\(String(format: "%.4f", pin.coordinate.latitude)), \(String(format: "%.4f", pin.coordinate.longitude))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                HStack {
+                                    Text("Quiet 👍 \(pin.averageQuietScore)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("•")
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(pin.latestTimestamp, style: .relative)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("ago")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             
                             Spacer()
@@ -737,6 +898,23 @@ struct PinDetailView: View {
                     .padding()
                     .background(Color.hushWaterRoad.opacity(0.3))
                     .cornerRadius(12)
+                    
+                    // Get Directions Button
+                    Button(action: {
+                        openInAppleMaps()
+                    }) {
+                        HStack {
+                            Image(systemName: "location.fill")
+                                .foregroundColor(.white)
+                            Text("Get Directions")
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.hushBackground)
+                        .cornerRadius(8)
+                    }
                     
                     // Timing info
                     VStack(alignment: .leading, spacing: 8) {
@@ -805,6 +983,16 @@ struct PinDetailView: View {
         default:
             return "Unknown"
         }
+    }
+    
+    private func openInAppleMaps() {
+        let coordinate = pin.coordinate
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = pin.displayName ?? pin.friendlyDisplayName
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+        ])
     }
 }
 

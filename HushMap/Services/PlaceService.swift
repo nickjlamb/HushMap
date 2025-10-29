@@ -6,10 +6,17 @@ struct PlaceSuggestion: Identifiable {
     let description: String
 }
 
-struct PlaceDetails {
+struct PlaceDetails: Equatable {
     let name: String
     let address: String
     let coordinate: CLLocationCoordinate2D
+    
+    static func == (lhs: PlaceDetails, rhs: PlaceDetails) -> Bool {
+        return lhs.name == rhs.name && 
+               lhs.address == rhs.address &&
+               lhs.coordinate.latitude == rhs.coordinate.latitude &&
+               lhs.coordinate.longitude == rhs.coordinate.longitude
+    }
 }
 
 class PlaceService {
@@ -51,7 +58,18 @@ class PlaceService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
-        request.setValue("https://hushmap.app", forHTTPHeaderField: "Referer")
+        
+        // Send bundle identifier for iOS app authentication
+        if let bundleId = Bundle.main.bundleIdentifier {
+            request.setValue(bundleId, forHTTPHeaderField: "X-Ios-Bundle-Identifier")
+            #if DEBUG
+            print("🔑 Using bundle ID: \(bundleId)")
+            #endif
+        } else {
+            #if DEBUG
+            print("⚠️ Bundle identifier is nil")
+            #endif
+        }
         
         let requestBody: [String: Any] = [
             "input": input,
@@ -157,9 +175,13 @@ class PlaceService {
         request.httpMethod = "GET"
         request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
         request.setValue("displayName,formattedAddress,location", forHTTPHeaderField: "X-Goog-FieldMask")
-        request.setValue("https://hushmap.app", forHTTPHeaderField: "Referer")
         
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        // Send bundle identifier for iOS app authentication
+        if let bundleId = Bundle.main.bundleIdentifier {
+            request.setValue(bundleId, forHTTPHeaderField: "X-Ios-Bundle-Identifier")
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     #if DEBUG

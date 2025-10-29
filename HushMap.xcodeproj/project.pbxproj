@@ -7,17 +7,50 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BA03F6BD2E9404A5005617AD /* HushMapWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = BA03F6B32E9404A4005617AD /* HushMapWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BA2B0BB72E452A25003155FB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = BA2B0BB62E452A25003155FB /* FirebaseFirestore */; };
 		BA9107E92DE5D6F60006D6C6 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BA9107E82DE5D6F60006D6C6 /* GoogleSignIn */; };
 		BA9107EB2DE5D6F60006D6C6 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BA9107EA2DE5D6F60006D6C6 /* GoogleSignInSwift */; };
 		BAF75E4F2DE4CF80001F31F6 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = BAF75E4E2DE4CF80001F31F6 /* GoogleMaps */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		BA03F6BB2E9404A5005617AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BA4AA7592DC90AEF0076E771 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA03F6B22E9404A4005617AD;
+			remoteInfo = "HushMapWatch Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BA03F6C12E9404A5005617AD /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				BA03F6BD2E9404A5005617AD /* HushMapWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		BA03F6B32E9404A4005617AD /* HushMapWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "HushMapWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA4AA7612DC90AEF0076E771 /* HushMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HushMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BA03F6CF2E94063F005617AD /* Exceptions for "HushMapWatch Watch App" folder in "HushMapWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BA03F6B22E9404A4005617AD /* HushMapWatch Watch App */;
+		};
 		BA9107EF2DE5DF300006D6C6 /* Exceptions for "HushMap" folder in "HushMap" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -30,6 +63,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		BA03F6B42E9404A4005617AD /* HushMapWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BA03F6CF2E94063F005617AD /* Exceptions for "HushMapWatch Watch App" folder in "HushMapWatch Watch App" target */,
+			);
+			path = "HushMapWatch Watch App";
+			sourceTree = "<group>";
+		};
 		BA4AA7632DC90AEF0076E771 /* HushMap */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -41,6 +82,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BA03F6B02E9404A4005617AD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BA4AA75E2DC90AEF0076E771 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -59,6 +107,7 @@
 			isa = PBXGroup;
 			children = (
 				BA4AA7632DC90AEF0076E771 /* HushMap */,
+				BA03F6B42E9404A4005617AD /* HushMapWatch Watch App */,
 				BA4AA7622DC90AEF0076E771 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -67,6 +116,7 @@
 			isa = PBXGroup;
 			children = (
 				BA4AA7612DC90AEF0076E771 /* HushMap.app */,
+				BA03F6B32E9404A4005617AD /* HushMapWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,6 +124,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BA03F6B22E9404A4005617AD /* HushMapWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA03F6BE2E9404A5005617AD /* Build configuration list for PBXNativeTarget "HushMapWatch Watch App" */;
+			buildPhases = (
+				BA03F6AF2E9404A4005617AD /* Sources */,
+				BA03F6B02E9404A4005617AD /* Frameworks */,
+				BA03F6B12E9404A4005617AD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BA03F6B42E9404A4005617AD /* HushMapWatch Watch App */,
+			);
+			name = "HushMapWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "HushMapWatch Watch App";
+			productReference = BA03F6B32E9404A4005617AD /* HushMapWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
 		BA4AA7602DC90AEF0076E771 /* HushMap */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BA4AA76E2DC90AF00076E771 /* Build configuration list for PBXNativeTarget "HushMap" */;
@@ -81,10 +153,12 @@
 				BA4AA75D2DC90AEF0076E771 /* Sources */,
 				BA4AA75E2DC90AEF0076E771 /* Frameworks */,
 				BA4AA75F2DC90AEF0076E771 /* Resources */,
+				BA03F6C12E9404A5005617AD /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BA03F6BC2E9404A5005617AD /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BA4AA7632DC90AEF0076E771 /* HushMap */,
@@ -107,9 +181,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 1640;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					BA03F6B22E9404A4005617AD = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 					BA4AA7602DC90AEF0076E771 = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -135,11 +212,19 @@
 			projectRoot = "";
 			targets = (
 				BA4AA7602DC90AEF0076E771 /* HushMap */,
+				BA03F6B22E9404A4005617AD /* HushMapWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		BA03F6B12E9404A4005617AD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BA4AA75F2DC90AEF0076E771 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -150,6 +235,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		BA03F6AF2E9404A4005617AD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BA4AA75D2DC90AEF0076E771 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -159,7 +251,89 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BA03F6BC2E9404A5005617AD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA03F6B22E9404A4005617AD /* HushMapWatch Watch App */;
+			targetProxy = BA03F6BB2E9404A5005617AD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		BA03F6BF2E9404A5005617AD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "HushMapWatch Watch App/HushMapWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = 3H2VBLFN4M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = HushMap;
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "HushMap uses environmental sound levels to help you track noise exposure in different locations.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "HushMap uses environmental sound levels from your Apple Watch to help you track and log noise exposure in different locations.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "HushMap records environmental sound level data to help you track noise exposure and find quiet, comfortable places.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.medcopywriter.HushMap;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
+			};
+			name = Debug;
+		};
+		BA03F6C02E9404A5005617AD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "HushMapWatch Watch App/HushMapWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = 3H2VBLFN4M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = HushMap;
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "HushMap uses environmental sound levels to help you track noise exposure in different locations.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "HushMap uses environmental sound levels from your Apple Watch to help you track and log noise exposure in different locations.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "HushMap records environmental sound level data to help you track noise exposure and find quiet, comfortable places.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.medcopywriter.HushMap;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
+			};
+			name = Release;
+		};
 		BA4AA76C2DC90AF00076E771 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = BA4AA7632DC90AEF0076E771 /* HushMap */;
@@ -221,6 +395,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -280,6 +455,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -294,7 +470,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HushMap/HushMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 3H2VBLFN4M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -310,7 +486,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.2;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -328,7 +504,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HushMap/HushMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 3H2VBLFN4M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -344,7 +520,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.2;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.medcopywriter.HushMap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -356,6 +532,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BA03F6BE2E9404A5005617AD /* Build configuration list for PBXNativeTarget "HushMapWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA03F6BF2E9404A5005617AD /* Debug */,
+				BA03F6C02E9404A5005617AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		BA4AA75C2DC90AEF0076E771 /* Build configuration list for PBXProject "HushMap" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

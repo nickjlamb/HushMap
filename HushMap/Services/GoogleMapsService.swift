@@ -9,20 +9,24 @@ class GoogleMapsService {
     
     func configure() {
         let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String ?? ""
-        
+
         if apiKey.isEmpty || apiKey == "$(GOOGLE_MAPS_API_KEY)" {
+            #if DEBUG
             print("⚠️ WARNING: Please set your Google Maps API key in Config-Local.xcconfig")
             print("📝 Get your API key from: https://console.cloud.google.com/")
             print("🔗 Enable Maps SDK for iOS")
             print("💡 Make sure Config-Local.xcconfig is set in Xcode Project Settings > Build Settings > Configurations")
+            #endif
         } else {
             GMSServices.provideAPIKey(apiKey)
-            
+
             // Apply performance optimizations based on device capability
             configurePerformanceSettings()
-            
+
+            #if DEBUG
             print("✅ Google Maps configured successfully")
             print("📱 Performance optimizations applied for \(deviceCapability.performanceTier.rawValue) tier device")
+            #endif
         }
     }
     
@@ -66,8 +70,10 @@ class GoogleMapsService {
             mapView.settings.rotateGestures = false
             mapView.settings.tiltGestures = false
         }
-        
+
+        #if DEBUG
         print("🗺️ Map optimized for \(deviceCapability.performanceTier.rawValue) performance tier")
+        #endif
     }
     
     // Map style helper functions for Google Maps types

@@ -345,7 +345,7 @@ struct PlacePredictionView: View {
                                     )
                                     isPresented = false
                                 }) {
-                                    Label("Add Your Own Report", systemImage: "square.and.pencil")
+                                    Label("Log My Visit", systemImage: "square.and.pencil")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.borderedProminent)

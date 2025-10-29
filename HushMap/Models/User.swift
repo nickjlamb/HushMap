@@ -8,8 +8,9 @@ final class User {
     var points: Int = 0
     var lastReportDate: Date?
     
-    // Google Sign In integration
+    // Authentication integration
     var googleID: String?
+    var appleID: String?
     var email: String?
     var profileImageURL: String?
     var isAnonymous: Bool = true
@@ -35,11 +36,13 @@ final class User {
         switch authenticatedUser.signInMethod {
         case .google:
             self.googleID = authenticatedUser.id
+            self.appleID = nil
         case .apple:
-            // Store Apple ID in a separate field if needed
+            self.appleID = authenticatedUser.id
             self.googleID = nil
         case .none:
             self.googleID = nil
+            self.appleID = nil
         }
         
         self.profileImageURL = authenticatedUser.profileImageURL?.absoluteString

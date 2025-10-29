@@ -92,7 +92,12 @@ struct HushMapApp: App {
                     // Create a minimal container with no persistence as absolute last resort
                     let minimalSchema = Schema([Report.self])
                     let minimalConfig = ModelConfiguration(schema: minimalSchema, isStoredInMemoryOnly: true)
-                    return try! ModelContainer(for: minimalSchema, configurations: [minimalConfig])
+                    do {
+                        return try ModelContainer(for: minimalSchema, configurations: [minimalConfig])
+                    } catch {
+                        // If even this fails, crash with descriptive error for debugging
+                        fatalError("Failed to create minimal ModelContainer. This should never happen. Error: \(error.localizedDescription)")
+                    }
                 }
             }
         }
@@ -110,7 +115,10 @@ struct HushMapApp: App {
                         // Import sample data if needed
                         let modelContext = sharedModelContainer.mainContext
                         CSVLoader.importSampleDataIfNeeded(into: modelContext)
-                        
+
+                        // Configure Watch connectivity
+                        WatchConnectivityService.shared.configure(modelContext: modelContext)
+
                         // Listen for reset welcome notification
                         NotificationCenter.default.addObserver(
                             forName: Notification.Name("ShowWelcomeScreen"),
@@ -119,6 +127,20 @@ struct HushMapApp: App {
                         ) { _ in
                             hasSeenWelcome = false
                         }
+                    }
+                    .task {
+                        // Run background migration for unresolved reports
+                        let modelContext = sharedModelContainer.mainContext
+                        let reportStore = SwiftDataReportStore(modelContext: modelContext)
+                        let cacheStore: LocationLabelCacheStore = (try? DiskLocationLabelCacheStore()) ?? InMemoryLocationLabelCacheStore()
+                        let resolver = ReportLocationResolver()
+                        
+                        let migrator = AppStartMigrator(
+                            resolver: resolver,
+                            store: reportStore,
+                            cacheStore: cacheStore
+                        )
+                        migrator.runIfNeeded()
                     }
                     .onOpenURL { url in
                         GIDSignIn.sharedInstance.handle(url)

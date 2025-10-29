@@ -6,7 +6,23 @@ struct AddReportView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var locationManager = LocationManager()
     @StateObject private var audioService = AudioAnalysisService()
+    @StateObject private var authService = AuthenticationService.shared
     @Query private var users: [User]
+    
+    // Optional pre-filled location data
+    let prefilledLocation: CLLocationCoordinate2D?
+    let prefilledLocationName: String?
+    
+    // Initializers
+    init() {
+        self.prefilledLocation = nil
+        self.prefilledLocationName = nil
+    }
+    
+    init(location: CLLocationCoordinate2D, locationName: String? = nil) {
+        self.prefilledLocation = location
+        self.prefilledLocationName = locationName
+    }
     
     @State private var noiseLevel: Double = 0.5
     @State private var crowdLevel: Double = 0.5
@@ -132,7 +148,7 @@ struct AddReportView: View {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.subheadline)
-                                Text("Submit Report")
+                                Text("Save My Visit")
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                     .minimumScaleFactor(0.8)
@@ -162,7 +178,7 @@ struct AddReportView: View {
                 if showToast {
                     VStack {
                         Spacer()
-                        Text("Report saved successfully")
+                        Text("Visit logged successfully")
                             .padding()
                             .background(Color.hushBackground.opacity(0.9))
                             .foregroundColor(.white)
@@ -198,7 +214,7 @@ struct AddReportView: View {
                         .animation(.easeInOut(duration: 0.3), value: showBadgeNotification)
                 }
             }
-            .navigationTitle("Add Report")
+            .navigationTitle("Log My Visit")
             .onAppear {
                 // Ensure user exists
                 if users.isEmpty {
@@ -210,9 +226,13 @@ struct AddReportView: View {
     }
 
     func submitReport() {
-        // Initialize location for San Francisco if user location isn't available
+        // Provide success haptic feedback
+        let impactFeedback = UINotificationFeedbackGenerator()
+        impactFeedback.notificationOccurred(.success)
+
+        // Use prefilled location if available, otherwise use user location or default to San Francisco
         let defaultLocation = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-        let location = locationManager.lastLocation ?? defaultLocation
+        let location = prefilledLocation ?? locationManager.lastLocation ?? defaultLocation
 
         let newReport = Report(
             noise: noiseLevel,
@@ -225,8 +245,10 @@ struct AddReportView: View {
         )
         
         // Get the current user (or create one if needed)
-        let userService = UserService(modelContext: modelContext)
-        let currentUser = userService.getCurrentUser()
+        let currentUser = getCurrentOrCreateUser()
+        
+        // Associate the report with the current user
+        newReport.user = currentUser
         
         // Insert and process the report for gamification
         modelContext.insert(newReport)
@@ -286,6 +308,38 @@ struct AddReportView: View {
         }
 
         print("✅ Report saved to SwiftData with location")
+    }
+    
+    // Get current user from authentication or create anonymous user
+    private func getCurrentOrCreateUser() -> User {
+        // If user is authenticated, find or create their SwiftData user record
+        if let authenticatedUser = authService.currentUser {
+            // Look for existing SwiftData user matching the authenticated user
+            let existingUser = users.first { user in
+                switch authenticatedUser.signInMethod {
+                case .google:
+                    return user.googleID == authenticatedUser.id
+                case .apple:
+                    return user.appleID == authenticatedUser.id
+                case .none:
+                    return false
+                }
+            }
+            
+            if let existingUser = existingUser {
+                return existingUser
+            } else {
+                // Create new SwiftData user from authenticated user
+                let newUser = User(from: authenticatedUser)
+                modelContext.insert(newUser)
+                try? modelContext.save()
+                return newUser
+            }
+        } else {
+            // For anonymous users, use the UserService approach
+            let userService = UserService(modelContext: modelContext)
+            return userService.getCurrentUser()
+        }
     }
 }
 

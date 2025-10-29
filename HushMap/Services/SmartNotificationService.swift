@@ -3,7 +3,24 @@ import CoreLocation
 import UserNotifications
 import SwiftData
 
+@MainActor
 class SmartNotificationService: NSObject, ObservableObject {
+    static private var _shared: SmartNotificationService?
+    
+    static func shared(modelContext: ModelContext? = nil) -> SmartNotificationService {
+        if let existing = _shared {
+            return existing
+        }
+        
+        guard let modelContext = modelContext else {
+            fatalError("SmartNotificationService requires ModelContext on first initialization")
+        }
+        
+        let instance = SmartNotificationService(modelContext: modelContext)
+        _shared = instance
+        return instance
+    }
+    
     @Published var isMonitoring: Bool = false
     @Published var lastNotificationTime: Date?
     
@@ -11,13 +28,14 @@ class SmartNotificationService: NSObject, ObservableObject {
     private let notificationCenter = UNUserNotificationCenter.current()
     private var modelContext: ModelContext
     private var sensoryProfileService: SensoryProfileService
+    private var hasSetupNotifications = false
     
     // Notification settings
     private let minimumNotificationInterval: TimeInterval = 300 // 5 minutes between notifications
     private let monitoringRadius: CLLocationDistance = 100 // 100 meters
     private let confidenceThreshold: Double = 0.3 // Minimum profile confidence to send notifications
     
-    init(modelContext: ModelContext) {
+    private init(modelContext: ModelContext) {
         self.modelContext = modelContext
         self.sensoryProfileService = SensoryProfileService(modelContext: modelContext)
         
@@ -33,6 +51,9 @@ class SmartNotificationService: NSObject, ObservableObject {
     // MARK: - Setup and Permissions
     
     func setupNotifications() {
+        guard !hasSetupNotifications else { return }
+        hasSetupNotifications = true
+        
         Task { 
             await requestNotificationPermission()
         }
@@ -283,12 +304,14 @@ class SmartNotificationService: NSObject, ObservableObject {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
         let request = UNNotificationRequest(identifier: "demo_sensory_warning", content: content, trigger: trigger)
         
-        notificationCenter.add(request) { error in
+        notificationCenter.add(request) { [weak self] error in
             if let error = error {
                 print("Error sending demo warning: \(error)")
             } else {
                 print("Sent demo sensory warning")
-                self.lastNotificationTime = Date()
+                Task { @MainActor in
+                    self?.lastNotificationTime = Date()
+                }
             }
         }
     }
@@ -297,28 +320,32 @@ class SmartNotificationService: NSObject, ObservableObject {
 // MARK: - CLLocationManagerDelegate
 
 extension SmartNotificationService: CLLocationManagerDelegate {
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let currentLocation = locations.last else { return }
         
         // Check for sensory warnings at new location
-        checkForSensoryWarnings(at: currentLocation)
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            startLocationMonitoring()
-        case .denied, .restricted:
-            stopLocationMonitoring()
-            print("Location access denied - smart notifications disabled")
-        case .notDetermined:
-            requestLocationPermission()
-        @unknown default:
-            break
+        Task { @MainActor in
+            checkForSensoryWarnings(at: currentLocation)
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        Task { @MainActor in
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                startLocationMonitoring()
+            case .denied, .restricted:
+                stopLocationMonitoring()
+                print("Location access denied - smart notifications disabled")
+            case .notDetermined:
+                requestLocationPermission()
+            @unknown default:
+                break
+            }
+        }
+    }
+    
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location manager error: \(error.localizedDescription)")
     }
 }

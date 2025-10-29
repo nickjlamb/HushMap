@@ -12,52 +12,50 @@ struct NearbyView: View {
     @State private var sortByDistance = true
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                headerSection
-                
-                // Filters
-                filtersSection
-                
-                // Content
-                if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-                    locationPermissionView
-                } else if !locationManager.isLocationReady {
-                    loadingView
-                } else {
-                    nearbyLocationsList
-                }
+        VStack(spacing: 0) {
+            // Header
+            headerSection
+            
+            // Filters
+            filtersSection
+            
+            // Content
+            if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+                locationPermissionView
+            } else if !locationManager.isLocationReady {
+                loadingView
+            } else {
+                nearbyLocationsList
             }
-            .navigationTitle("Nearby")
-            .navigationBarTitleDisplayMode(.large)
-            .ignoresSafeArea(.all, edges: [.horizontal])
-            .onAppear {
-                locationManager.requestLocationPermission()
-            }
+        }
+        .navigationTitle("Nearby")
+        .standardizedSheet()
+        .onAppear {
+            locationManager.requestLocationPermission()
         }
     }
     
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        SheetCard {
             HStack {
                 Image(systemName: "location.magnifyingglass")
-                    .foregroundColor(.hushBackground)
+                    .foregroundColor(StandardizedSheetDesign.accentColor)
                     .font(.title2)
                 
                 VStack(alignment: .leading) {
                     Text("Sensory-Friendly Places")
-                        .font(.headline)
+                        .font(StandardizedSheetDesign.titleFont)
+                        .foregroundColor(StandardizedSheetDesign.primaryTextColor)
                     Text("Find quiet, comfortable spots nearby")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(StandardizedSheetDesign.subtitleFont)
+                        .foregroundColor(StandardizedSheetDesign.secondaryTextColor)
                 }
                 
                 Spacer()
             }
-            .padding()
-            .background(Color.hushMapShape.opacity(0.3))
         }
+        .padding(.horizontal, StandardizedSheetDesign.contentPadding.leading)
+        .padding(.top, 16)
     }
     
     private var filtersSection: some View {

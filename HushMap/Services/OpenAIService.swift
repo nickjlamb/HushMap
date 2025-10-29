@@ -47,8 +47,10 @@ class OpenAIService {
                 }
             }
         }
-        
+
+        #if DEBUG
         print("❌ OpenAI API key not found - check Config-Local.xcconfig")
+        #endif
         return ""
     }()
     private let baseURL = "https://api.openai.com/v1/chat/completions"
@@ -161,15 +163,19 @@ class OpenAIService {
                 throw AppError.network(.serverUnavailable)
             default:
                 let errorString = String(data: data, encoding: .utf8) ?? "Unknown error"
+                #if DEBUG
                 print("🤖 OpenAI API Error (\(httpResponse.statusCode)): \(errorString)")
+                #endif
                 throw AppError.api(.openAIError)
             }
-            
+
             do {
                 let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
                 return openAIResponse.choices.first?.message.content ?? "No response generated"
             } catch {
+                #if DEBUG
                 print("🤖 OpenAI JSON Decode Error: \(error)")
+                #endif
                 throw AppError.api(.openAIError)
             }
             
@@ -181,7 +187,9 @@ class OpenAIService {
             case .timedOut:
                 // Retry timeout errors once
                 if retryCount < 1 {
+                    #if DEBUG
                     print("🔄 OpenAI request timed out, retrying... (attempt \(retryCount + 1))")
+                    #endif
                     return try await performRequest(request, retryCount: retryCount + 1)
                 } else {
                     throw AppError.network(.timeout)
@@ -195,7 +203,9 @@ class OpenAIService {
         } catch {
             // Retry unexpected errors once
             if retryCount < 1 {
+                #if DEBUG
                 print("🔄 Unexpected OpenAI error, retrying... (attempt \(retryCount + 1)): \(error)")
+                #endif
                 return try await performRequest(request, retryCount: retryCount + 1)
             } else {
                 throw AppError.api(.openAIError)

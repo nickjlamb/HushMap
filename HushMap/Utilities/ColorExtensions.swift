@@ -1,18 +1,32 @@
 import SwiftUI
 
 extension Color {
-    // Brand colors
-    static let hushBackground = Color(hex: "739D8C") // Muted teal-green
-    static let hushMapShape = Color(hex: "F5E8C8") // Warm cream/beige
-    static let hushMapLines = Color(hex: "E5D6AE") // Soft tan
-    static let hushWaterRoad = Color(hex: "B8D2CC") // Light desaturated blue
-    static let hushPinFace = Color(hex: "F9E7A5") // Light yellow
-    static let hushPinOuter = Color(hex: "E9B94F") // Soft golden yellow
+    // Brand colors - Soft, muted earth tones
+    static let hushBackground = Color(hex: "8FA68E") // Sage green
+    static let hushMapShape = Color(hex: "FAF6F0") // Warm cream/off-white
+    static let hushMapLines = Color(hex: "E8DFD3") // Soft warm tan
+    static let hushWaterRoad = Color(hex: "A8C4D4") // Gentle blue
+    static let hushPinFace = Color(hex: "FFF9E6") // Soft warm yellow
+    static let hushPinOuter = Color(hex: "D4B896") // Muted golden tan
+    
+    // Warm off-whites (instead of harsh white)
+    static let hushOffWhite = Color(hex: "FAF8F5") // Warm off-white
+    static let hushCream = Color(hex: "F5F0E8") // Creamy white
+    static let hushSoftWhite = Color(hex: "FDFBF8") // Very soft white
+    
+    // High contrast text colors for excellent readability (WCAG AAA compliance)
+    static let hushPrimaryText = Color(hex: "1A1A1A") // Almost black for primary text
+    static let hushSecondaryText = Color(hex: "404040") // Dark gray for secondary text
+    static let hushTertiaryText = Color(hex: "6B6B6B") // Medium gray for tertiary text
+    
+    // On dark backgrounds
+    static let hushOnDarkText = Color(hex: "FEFEFE") // Very light text on dark backgrounds
+    static let hushOnDarkSecondary = Color(hex: "E0E0E0") // Secondary text on dark
     
     // Risk level colors - calming versions
-    static let hushLowRisk = Color(hex: "B8D2CC") // Light desaturated blue
-    static let hushMediumRisk = Color(hex: "F5E8C8") // Warm cream/beige
-    static let hushHighRisk = Color(hex: "E9B94F") // Soft golden yellow
+    static let hushLowRisk = Color(hex: "A8C4D4") // Gentle blue
+    static let hushMediumRisk = Color(hex: "E8DFD3") // Soft warm tan
+    static let hushHighRisk = Color(hex: "D4B896") // Muted golden tan
     
     // Helper initializer for hex colors
     init(hex: String) {

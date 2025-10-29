@@ -8,16 +8,18 @@ struct ProfileView: View {
     @Query private var user: [User]
     @Query private var reports: [Report]
     @StateObject private var authService = AuthenticationService.shared
-    @StateObject private var syncService = ReportSyncService.shared
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("smartNotificationsEnabled") private var smartNotificationsEnabled: Bool = true
     @AppStorage("hasCompletedHistoricalSync") private var hasCompletedHistoricalSync: Bool = false
+    @AppStorage("highContrastMode") private var highContrastMode: Bool = false
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
-    @State private var smartNotificationService: SmartNotificationService?
     @State private var isSyncingReports = false
     @State private var syncMessage: String?
+    #if DEBUG
+    @State private var showingDevSettings = false
+    #endif
     
     private var currentUser: User {
         // Get the user or create one if needed
@@ -30,38 +32,37 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Authentication Section
-                    authenticationSectionView
-                    
-                    // Points Section
-                    pointsSummaryView
-                    
-                    // Sensory Profile Section
-                    sensoryProfileSectionView
-                    
-                    // Badges Section
-                    badgesSectionView
-                    
-                    // Settings Section
-                    settingsSectionView
-                }
-                .padding()
-            }
-            .navigationTitle("Your Profile")
-            .onAppear {
-                // Ensure user exists when view appears
-                if user.isEmpty {
-                    let userService = UserService(modelContext: modelContext)
-                    _ = userService.getCurrentUser()
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: StandardizedSheetDesign.sectionSpacing) {
+                // Authentication Section
+                authenticationSectionView
                 
-                // Restore previous sign in
-                authService.restorePreviousSignIn()
+                // Points Section
+                pointsSummaryView
+                
+                // Sensory Profile Section
+                sensoryProfileSectionView
+                
+                // Badges Section
+                badgesSectionView
+                
+                // Settings Section
+                settingsSectionView
             }
-            .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+            .padding(StandardizedSheetDesign.contentPadding)
+        }
+        .navigationTitle("Your Profile")
+        .standardizedSheet()
+        .onAppear {
+            // Ensure user exists when view appears
+            if user.isEmpty {
+                let userService = UserService(modelContext: modelContext)
+                _ = userService.getCurrentUser()
+            }
+            // Restore previous sign in
+            authService.restorePreviousSignIn()
+        }
+        .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
                     Task {
@@ -71,7 +72,6 @@ struct ProfileView: View {
             } message: {
                 Text("This will permanently delete your account and all associated data including reports, badges, and preferences. This action cannot be undone.")
             }
-        }
     }
     
     private var authenticationSectionView: some View {
@@ -361,10 +361,37 @@ struct ProfileView: View {
     private var settingsSectionView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Settings")
-                .font(.headline)
-                .foregroundColor(.secondary)
+                .hushHeadline()
+                .foregroundColor(.hushSecondaryText)
             
             VStack(spacing: 0) {
+                // High Contrast Mode option (prominent for accessibility)
+                Toggle(isOn: $highContrastMode) {
+                    HStack {
+                        Image(systemName: "circle.lefthalf.filled")
+                            .foregroundColor(.hushBackground)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("High Contrast Mode")
+                                .hushBody()
+                                .foregroundColor(.hushPrimaryText)
+                            
+                            Text("Enhanced visibility for better readability")
+                                .hushFootnote()
+                                .foregroundColor(.hushSecondaryText)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .tint(.hushBackground)
+                
+                Divider()
+                    .padding(.horizontal, 16)
+                
                 // Smart Notifications option
                 smartNotificationToggle
                 
@@ -414,16 +441,34 @@ struct ProfileView: View {
                     Task {
                         isSyncingReports = true
                         syncMessage = nil
-                        
-                        await syncService.syncAllHistoricalReports(from: modelContext)
-                        
-                        isSyncingReports = false
-                        hasCompletedHistoricalSync = true
-                        syncMessage = "✅ Sync complete! Your reports are now shared globally."
-                        
-                        // Clear message after 3 seconds
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                            syncMessage = nil
+
+                        do {
+                            let syncedCount = try await ReportSyncService.shared.syncAllReports(from: modelContext)
+
+                            isSyncingReports = false
+                            hasCompletedHistoricalSync = true
+                            syncMessage = "✅ Synced \(syncedCount) reports successfully!"
+
+                            // Clear message after 3 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                syncMessage = nil
+                            }
+                        } catch let error as ReportSyncService.SyncError {
+                            isSyncingReports = false
+                            syncMessage = "⚠️ \(error.localizedDescription)"
+
+                            // Clear message after 5 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                                syncMessage = nil
+                            }
+                        } catch {
+                            isSyncingReports = false
+                            syncMessage = "❌ Sync failed: \(error.localizedDescription)"
+
+                            // Clear message after 5 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                                syncMessage = nil
+                            }
                         }
                     }
                 }) {
@@ -565,6 +610,53 @@ struct ProfileView: View {
                     .padding(.horizontal, 16)
                 }
                 .buttonStyle(PlainButtonStyle())
+                
+                #if DEBUG
+                Divider()
+                    .padding(.horizontal, 16)
+                
+                // Developer Settings (DEBUG only)
+                Button(action: {
+                    showingDevSettings = true
+                }) {
+                    HStack {
+                        Image(systemName: "wrench.and.screwdriver")
+                            .foregroundColor(.orange)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Dev Settings")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            
+                            Text("Privacy controls and debugging options")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text("DEBUG")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange)
+                            .cornerRadius(4)
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .sheet(isPresented: $showingDevSettings) {
+                    DevSettingsView()
+                }
+                #endif
                 
                 Divider()
                     .padding(.horizontal, 16)
@@ -733,24 +825,21 @@ struct ProfileView: View {
             
             Toggle("", isOn: $smartNotificationsEnabled)
                 .onChange(of: smartNotificationsEnabled) { _, newValue in
-                    if let service = smartNotificationService {
-                        if newValue {
-                            service.enableSmartNotifications()
-                        } else {
-                            service.disableSmartNotifications()
-                        }
+                    let service = SmartNotificationService.shared(modelContext: modelContext)
+                    if newValue {
+                        service.enableSmartNotifications()
+                    } else {
+                        service.disableSmartNotifications()
                     }
                 }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .onAppear {
-            // Initialize smart notification service if needed
-            if smartNotificationService == nil {
-                smartNotificationService = SmartNotificationService(modelContext: modelContext)
-                if smartNotificationsEnabled {
-                    smartNotificationService?.enableSmartNotifications()
-                }
+            // Initialize smart notification service singleton
+            let service = SmartNotificationService.shared(modelContext: modelContext)
+            if smartNotificationsEnabled {
+                service.enableSmartNotifications()
             }
         }
     }

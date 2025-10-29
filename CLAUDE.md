@@ -4,91 +4,171 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HushMap is a SwiftUI-based iOS application for sensory mapping and accessibility, helping users find quiet or stimulating environments based on their sensory preferences. Built for the Google Maps Platform Awards.
+HushMap is an advanced iOS application for sensory accessibility mapping, built with SwiftUI and SwiftData. It helps users with sensory sensitivities find comfortable environments through AI-powered predictions and community-driven data. Developed for the Google Maps Platform Awards.
 
 ## Build Commands
 
 ```bash
-# Build the project
+# Build for simulator
 xcodebuild -project HushMap.xcodeproj -scheme HushMap -configuration Debug build
 
-# Clean and build
+# Clean build
 xcodebuild -project HushMap.xcodeproj -scheme HushMap clean build
 
-# Build for device
-xcodebuild -project HushMap.xcodeproj -scheme HushMap -sdk iphoneos build
+# Build for device deployment
+xcodebuild -project HushMap.xcodeproj -scheme HushMap -sdk iphoneos -configuration Release build
 
-# Run in simulator (requires Xcode)
+# Run tests (when available)
+xcodebuild -project HushMap.xcodeproj -scheme HushMap test
+
+# Open in Xcode IDE
 open HushMap.xcodeproj
-# Then press Cmd+R in Xcode
 ```
 
-## Architecture
+## Architecture Overview
 
-The app follows **MVVM + SwiftUI + SwiftData** architecture:
+### Core Pattern: MVVM + SwiftUI + SwiftData
 
-- **Models** (`HushMap/Models/`): SwiftData models for persistence
-  - Core models: `Report`, `User`, `Badge`, `SensoryProfile`, `SensoryPrediction`
-  
-- **Services** (`HushMap/Services/`): Singleton services (@MainActor)
-  - `AuthenticationService`: Google/Apple Sign-In
-  - `LocationManager`: Core Location wrapper
-  - `PlaceService` + `GoogleMapsService`: Maps integration
-  - `OpenAIService` + `PredictionService`: AI predictions
-  - `AudioAnalysisService`: Sound level measurement
+The app uses a layered architecture with clear separation of concerns:
 
-- **Views** (`HushMap/Views/`): SwiftUI views
-  - Main views: `HomeMapView`, `ProfileView`, `NearbyView`
-  - Components in `Views/Components/`
+1. **Data Layer** (`Models/`): SwiftData models with `@Model` macro
+   - `Report`: Sensory environment data (noise, crowds, lighting, comfort)
+   - `User`: Authentication, points, badges, sensory profile
+   - `SensoryProfile`: AI learning system tracking user preferences
+   - Relationships: User ↔ Reports ↔ SensoryProfile with proper inverses
 
-- **ViewModels** (`HushMap/ViewModels/`): ObservableObject view models
+2. **Service Layer** (`Services/`): @MainActor singleton services
+   - All services use `shared` singleton pattern for thread safety
+   - Services handle external APIs, device capabilities, and business logic
+   - Error handling through `AppError` enum with comprehensive cases
 
-## Key Development Patterns
+3. **Presentation Layer**: SwiftUI views with reactive state
+   - Views in `Views/` use `@State`, `@StateObject`, `@ObservedObject`
+   - ViewModels use `@Published` for reactive updates
+   - SwiftData `@Query` for automatic UI updates from database
 
-1. **State Management**: Use `@Published` in ViewModels, `@State`/`@StateObject` in Views
-2. **Navigation**: SwiftUI sheets and navigation stacks (no UIKit navigation)
-3. **Async/Await**: All network calls use modern Swift concurrency
-4. **Error Handling**: Services throw errors, ViewModels handle and display them
-5. **SwiftData**: Models use `@Model` macro, container initialized in `HushMapApp.swift`
+### Key Architectural Components
 
-## Configuration Setup
+#### AI Prediction System
+The app implements a sophisticated hybrid prediction system:
+- **Primary**: OpenAI GPT-4 predictions via `PredictionService` → `OpenAIService`
+- **Fallback**: Algorithmic predictions based on venue type, time, weather
+- **Learning**: `SensoryProfile` adapts to user comfort levels using exponential moving averages
+- **Validation**: Multi-stage AI response validation with structured parsing
 
-1. Copy `Config.xcconfig` to `Config-Local.xcconfig`
-2. Add required API keys:
-   - `GOOGLE_MAPS_API_KEY`
-   - `GOOGLE_PLACES_API_KEY`
-   - `OPENAI_API_KEY`
+#### Performance Optimization
+Device capability-aware rendering system:
+- `DeviceCapabilityService` categorizes devices (High/Medium/Low)
+- Map markers adapt complexity based on device tier
+- Clustering algorithms scale with performance capabilities
+- Animation durations adjust to maintain smooth UX
 
-## Common Tasks
+#### Authentication Flow
+Multi-provider authentication with privacy support:
+- Google Sign-In and Apple Sign-In via `AuthenticationService`
+- Anonymous mode with full functionality
+- User data association after authentication
+- GDPR-compliant account deletion
 
-### Adding a New Feature
-1. Create model in `Models/` if needed (use `@Model` for persistence)
-2. Add service logic to existing service or create new one in `Services/`
-3. Create ViewModel in `ViewModels/` with `@Published` properties
-4. Build SwiftUI view in `Views/`
-5. Add navigation from appropriate parent view
+## Critical Development Patterns
 
-### Working with Google Maps
-- Maps views use `GoogleMapsView` wrapper in `Views/Components/`
-- Place searches go through `PlaceService.searchPlaces()`
-- Always check `isConfigured` before using map services
+### State Management Rules
+1. **Services**: Always `@MainActor` singletons with `shared` instance
+2. **ViewModels**: Use `@Published` for properties that trigger UI updates
+3. **Views**: `@StateObject` for owned ViewModels, `@ObservedObject` for injected
+4. **SwiftData**: `@Query` in views for reactive database updates
 
-### Working with AI Predictions
-- Predictions flow: `PredictionService` → `OpenAIService` → OpenAI API
-- CSV data loaded via `CSVLoader` utility
-- Predictions cached in SwiftData via `SensoryPrediction` model
+### Navigation Architecture
+- Sheet-based modal presentation (no UIKit navigation controllers)
+- State cleanup in `.onDisappear` modifiers
+- Welcome/onboarding flow managed at app level in `HushMapApp`
 
-### Handling Authentication
-- All auth through `AuthenticationService.shared`
-- User state in `authService.currentUser`
-- Sign-in methods: `signInWithGoogle()`, `signInWithApple()`
+### Error Handling Pattern
+```swift
+// Services throw errors
+func fetchData() async throws -> Data
 
-## Testing
-Currently no unit tests configured. Test manually through Xcode simulator or device.
+// ViewModels handle and display
+do {
+    data = try await service.fetchData()
+} catch {
+    self.error = error
+    self.showAlert = true
+}
+```
 
-## Important Notes
-- Minimum iOS version: 17.0
-- Uses SwiftData (iOS 17+ only)
-- All services are `@MainActor` singletons
-- API keys must be properly configured in Google Cloud Console
-- Privacy permissions required: location, microphone
+### Google Maps Integration
+- Always check `GoogleMapsService.shared.isConfigured` before map operations
+- Use `GoogleMapsView` wrapper component for SwiftUI integration
+- Handle POI taps, map taps, and marker interactions separately
+- Device-aware marker rendering for performance
+
+## Configuration Requirements
+
+1. Create `Config-Local.xcconfig` from `Config.xcconfig` template
+2. Required API keys:
+   - `GOOGLE_MAPS_API_KEY`: Maps SDK and Places API
+   - `GOOGLE_PLACES_API_KEY`: Place search and autocomplete
+   - `OPENAI_API_KEY`: AI predictions
+3. Configure Google Cloud Console:
+   - Enable Maps SDK for iOS
+   - Enable Places API
+   - Add bundle identifier to API key restrictions
+
+## Working with Key Features
+
+### Adding New Sensory Data Types
+1. Update `Report` model with new property
+2. Modify `PredictionService.generatePrediction()` prompt
+3. Add UI controls in `AddReportView`
+4. Update `SensoryProfile` learning algorithm if needed
+
+### Implementing New AI Features
+1. Add method to `OpenAIService` for API call
+2. Create validation in `PredictionService`
+3. Implement fallback algorithm for when AI unavailable
+4. Cache results in SwiftData model if appropriate
+
+### Modifying Map Behavior
+1. Edit `GoogleMapsView` for map configuration
+2. Update `HomeMapViewModel` for data management
+3. Adjust `DeviceCapabilityService` thresholds for performance
+4. Test on low-end devices (iPhone 12 or older)
+
+### Database Migrations
+- SwiftData handles simple migrations automatically
+- For complex changes, implement migration plan in `modelContainer` initialization
+- Test migration path from previous app version
+
+## Performance Considerations
+
+- **Map Markers**: Limited to 100 on low-end devices, 500 on high-end
+- **Clustering**: Enabled when >50 markers visible
+- **AI Predictions**: Cached for 24 hours to reduce API calls
+- **Images**: Lazy loaded in lists, cached in memory
+- **Animations**: Duration scales with device capability
+
+## Privacy & Permissions
+
+Required Info.plist keys already configured:
+- `NSLocationWhenInUseUsageDescription`: Location for nearby places
+- `NSMicrophoneUsageDescription`: Sound level measurement
+- `NSCameraUsageDescription`: Photo uploads (if implemented)
+
+## Testing Approach
+
+Manual testing checklist:
+1. Test on iPhone 12 (low-end) and iPhone 15 Pro (high-end)
+2. Verify anonymous mode → authenticated transition
+3. Test offline behavior and error states
+4. Validate AI prediction fallbacks
+5. Check accessibility with VoiceOver
+6. Test Dynamic Type scaling
+
+## Important Technical Constraints
+
+- **Minimum iOS**: 17.0 (required for SwiftData)
+- **Swift Concurrency**: All async operations use async/await
+- **Thread Safety**: All UI updates on @MainActor
+- **Memory**: Profile with Instruments for leaks
+- **API Quotas**: Monitor Google Maps and OpenAI usage

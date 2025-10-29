@@ -11,9 +11,9 @@ struct AboutView: View {
     // Color scheme adaptation for accessibility
     var backgroundColor: Color {
         if highContrastMode {
-            return .white // Always white background in high contrast mode
+            return .hushOffWhite // Warm off-white in high contrast mode
         } else {
-            return colorScheme == .dark ? Color(UIColor.systemBackground) : Color.white
+            return colorScheme == .dark ? Color(UIColor.systemBackground) : Color.hushCream
         }
     }
     
@@ -21,27 +21,27 @@ struct AboutView: View {
         if highContrastMode {
             return .black // Always black text in high contrast mode
         } else {
-            return colorScheme == .dark ? Color.white : Color.black
+            return colorScheme == .dark ? Color.hushOffWhite : Color.black
         }
     }
     
     var accentColor: Color {
-        highContrastMode ? .blue : .indigo
+        highContrastMode ? .hushWaterRoad : .hushBackground
     }
     
     var cardBackgroundColor: Color {
         if highContrastMode {
-            return .white
+            return .hushSoftWhite
         } else {
-            return colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.systemGray6)
+            return colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color.hushSoftWhite
         }
     }
     
     var buttonBackgroundColor: Color {
         if highContrastMode {
-            return Color.gray.opacity(0.2)
+            return Color.hushMapLines.opacity(0.3)
         } else {
-            return colorScheme == .dark ? Color(UIColor.tertiarySystemBackground) : Color(UIColor.systemGray5)
+            return colorScheme == .dark ? Color(UIColor.tertiarySystemBackground) : Color.hushMapLines.opacity(0.2)
         }
     }
     
@@ -172,7 +172,7 @@ struct AboutView: View {
                     .accessibilityLabel("Open terms of service")
                     
                     Button {
-                        if let url = URL(string: "mailto:support@hushmap.app") {
+                        if let url = URL(string: "mailto:support@pharmatools.ai") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
@@ -181,7 +181,7 @@ struct AboutView: View {
                                 .font(.title3)
                             Text("Contact Support")
                             Spacer()
-                            Text("support@hushmap.app")
+                            Text("support@pharmatools.ai")
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                         }
@@ -193,6 +193,31 @@ struct AboutView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Email support")
+                    
+                    Button {
+                        // Open App Store page for rating
+                        if let url = URL(string: "https://apps.apple.com/app/id6748575846?action=write-review") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "star.fill")
+                                .font(.title3)
+                                .foregroundColor(.yellow)
+                            Text("Rate This App")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(buttonBackgroundColor)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Rate HushMap on the App Store")
                 }
                 
                 // Try our other app
@@ -258,7 +283,7 @@ struct AboutView: View {
                 HStack {
                     Spacer()
                     VStack {
-                        Text("HushMap v1.1.2 (6)")
+                        Text("HushMap v1.4.0 (9)")
                             .font(.caption)
                             .foregroundColor(textColor.opacity(0.6))
                         Text("© 2025 PharmaTools.AI")

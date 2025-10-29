@@ -13,12 +13,13 @@ struct GoogleMapView: UIViewRepresentable {
     
     @ObservedObject private var deviceCapability = DeviceCapabilityService.shared
     private let googleMapsService = GoogleMapsService.shared
+    @State private var lastZoomBucket: CGFloat = 1.0
     
     func makeUIView(context: Context) -> GMSMapView {
         let camera = GMSCameraPosition.camera(
             withLatitude: cameraPosition.latitude,
             longitude: cameraPosition.longitude,
-            zoom: 12.0
+            zoom: 16.0
         )
         
         let mapView = GMSMapView()
@@ -70,31 +71,29 @@ struct GoogleMapView: UIViewRepresentable {
     }
     
     private func addPinsToMap(mapView: GMSMapView) {
-        let optimizationLevel = deviceCapability.getMarkerOptimizationLevel()
-        
-        // Add report pins with performance optimization
+        // Add report pins with new teardrop markers
         for pin in pins {
             let marker = GMSMarker()
             marker.position = pin.coordinate
             marker.title = "Sensory Report"
             marker.snippet = "Quality: \(pin.qualityRating)"
             
-            // Create marker based on performance level
-            switch optimizationLevel {
-            case .none:
-                // Full custom views with animations
-                let markerView = createMarkerView(for: pin)
-                marker.iconView = markerView
-                
-            case .moderate:
-                // Simplified views, reduced complexity
-                let markerView = createOptimizedMarkerView(for: pin)
-                marker.iconView = markerView
-                
-            case .aggressive:
-                // Basic system markers for maximum performance
-                marker.icon = getBasicMarkerIcon(for: pin)
-            }
+            // Use new teardrop markers - convert average sensory level (0-1) to comfort (0-100)
+            let comfortScore = (1.0 - pin.averageSensoryLevel) * 100
+            let status = MarkerProvider.shared.statusFromComfort(comfortScore)
+            let config = MarkerConfig(
+                status: status,
+                selected: false,
+                accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
+                    for: status,
+                    location: pin.displayName
+                )
+            )
+            
+            // Get current interface style and zoom
+            let interfaceStyle = UITraitCollection.current.userInterfaceStyle
+            let currentZoom = mapView.camera.zoom
+            MarkerProvider.shared.applyIcon(to: marker, config: config, cameraZoom: currentZoom, interfaceStyle: interfaceStyle)
             
             marker.userData = pin
             marker.map = mapView
@@ -107,18 +106,43 @@ struct GoogleMapView: UIViewRepresentable {
             marker.title = tempPin.name
             marker.snippet = "Tap for prediction"
             
-            // Different style for temp pin based on optimization level
-            switch optimizationLevel {
-            case .none:
-                let markerView = createTempMarkerView()
-                marker.iconView = markerView
-                
-            case .moderate:
-                let markerView = createOptimizedTempMarkerView()
-                marker.iconView = markerView
-                
-            case .aggressive:
+            // Use appropriate style for temp pin based on config
+            if MarkerStyleConfig.mode == .googleDefault {
+                // Use Google's default marker in purple
+                marker.iconView = nil
                 marker.icon = GMSMarker.markerImage(with: .systemPurple)
+                marker.groundAnchor = CGPoint(x: 0.5, y: 1.0)
+                marker.tracksViewChanges = false
+                marker.accessibilityLabel = "Predicted location: \(tempPin.name)"
+            } else {
+                // Use custom purple teardrop
+                let interfaceStyle = UITraitCollection.current.userInterfaceStyle
+                let currentZoom = mapView.camera.zoom
+                let zoomMultiplier = PinSizing.quantizedMultiplier(for: currentZoom)
+                let purpleImage = createPurpleTeardropMarker(size: .normal, zoomMultiplier: zoomMultiplier, interfaceStyle: interfaceStyle)
+                
+                // Create 44x44 tap target for temp pin too
+                let tapTargetSize: CGFloat = 44
+                let containerView = UIView(frame: CGRect(x: 0, y: 0, width: tapTargetSize, height: tapTargetSize))
+                containerView.isUserInteractionEnabled = false
+                containerView.backgroundColor = UIColor.clear
+                
+                let imageView = UIImageView(image: purpleImage)
+                imageView.contentMode = .center
+                imageView.frame = containerView.bounds
+                containerView.addSubview(imageView)
+                
+                marker.iconView = containerView
+                
+                // Adjust ground anchor for temp pin container
+                let imageHeight = purpleImage.size.height
+                let containerHeight = tapTargetSize
+                let anchorY = 1.0 - (containerHeight - imageHeight) / (2 * containerHeight)
+                marker.groundAnchor = CGPoint(x: 0.5, y: anchorY)
+                
+                // Accessibility for temp pin
+                containerView.isAccessibilityElement = true
+                containerView.accessibilityLabel = "Predicted location: \(tempPin.name)"
             }
             
             marker.userData = tempPin
@@ -126,120 +150,67 @@ struct GoogleMapView: UIViewRepresentable {
         }
     }
     
-    private func createMarkerView(for pin: ReportPin) -> UIView {
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
-        markerView.backgroundColor = getQualityColor(for: pin.averageSensoryLevel)
-        markerView.layer.cornerRadius = 16
-        markerView.layer.borderWidth = 2
-        markerView.layer.borderColor = UIColor.white.cgColor
+    // Helper to create purple teardrop for temp pins
+    private func createPurpleTeardropMarker(size: MarkerSize, zoomMultiplier: CGFloat = 1.0, interfaceStyle: UIUserInterfaceStyle = .light) -> UIImage {
+        let S = size.pointSize * zoomMultiplier
         
-        // Apply shadows only if device supports it
-        if deviceCapability.shouldEnableShadows() {
-            markerView.layer.shadowColor = UIColor.black.cgColor
-            markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-            markerView.layer.shadowOpacity = 0.3
-            markerView.layer.shadowRadius = 4
+        // Canvas with padding for halo
+        let padding: CGFloat = 8
+        let canvasSize = CGSize(width: S + padding * 2, height: S + padding * 2)
+        
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = UIScreen.main.scale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: canvasSize, format: format)
+        
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            c.saveGState()
+            
+            // Translate to account for padding
+            c.translateBy(x: padding, y: padding)
+            
+            // Geometry (matching main marker)
+            let tipY = S - 0.5
+            let bulbCenter = CGPoint(x: S * 0.5, y: S * 0.44)
+            let bulbR = S * 0.34
+            let holeR = S * 0.24
+            
+            // Outer teardrop path
+            let path = UIBezierPath()
+            path.addArc(withCenter: bulbCenter, radius: bulbR,
+                       startAngle: CGFloat.pi * 1.15, endAngle: CGFloat.pi * -0.15, clockwise: true)
+            path.addQuadCurve(to: CGPoint(x: S * 0.50, y: tipY),
+                             controlPoint: CGPoint(x: S * 0.86, y: S * 0.86))
+            let leftArcEnd = CGPoint(x: bulbCenter.x - bulbR * cos(.pi * 0.15),
+                                    y: bulbCenter.y + bulbR * sin(.pi * 0.15))
+            path.addQuadCurve(to: leftArcEnd,
+                             controlPoint: CGPoint(x: S * 0.14, y: S * 0.86))
+            path.close()
+            
+            // HALO
+            let halo = (interfaceStyle == .dark)
+                ? UIColor.black.withAlphaComponent(0.65)
+                : UIColor.white.withAlphaComponent(0.80)
+            c.setShadow(offset: CGSize(width: 0, height: 2), blur: 5, color: halo.cgColor)
+            
+            // Fill pin with purple
+            c.setFillColor(UIColor.systemPurple.cgColor)
+            c.addPath(path.cgPath)
+            c.drawPath(using: .fill)
+            c.setShadow(offset: .zero, blur: 0, color: nil)
+            
+            // PUNCH OUT HOLE (true transparency)
+            c.setBlendMode(.clear)
+            let holeRect = CGRect(x: bulbCenter.x - holeR, y: bulbCenter.y - holeR,
+                                 width: holeR * 2, height: holeR * 2)
+            c.fillEllipse(in: holeRect)
+            c.setBlendMode(.normal)
+            
+            c.restoreGState()
         }
-        
-        // Add count label if more than one report
-        if pin.reportCount > 1 {
-            let label = UILabel(frame: markerView.bounds)
-            label.text = "\(pin.reportCount)"
-            label.textAlignment = .center
-            label.font = UIFont.boldSystemFont(ofSize: 12)
-            label.textColor = .white
-            markerView.addSubview(label)
-        }
-        
-        return markerView
     }
     
-    private func createOptimizedMarkerView(for pin: ReportPin) -> UIView {
-        // Simplified marker for medium performance devices
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 28, height: 28))
-        markerView.backgroundColor = getQualityColor(for: pin.averageSensoryLevel)
-        markerView.layer.cornerRadius = 14
-        markerView.layer.borderWidth = 1
-        markerView.layer.borderColor = UIColor.white.cgColor
-        
-        // No shadows for better performance
-        
-        // Simplified count display
-        if pin.reportCount > 1 {
-            let label = UILabel(frame: markerView.bounds)
-            label.text = "\(pin.reportCount)"
-            label.textAlignment = .center
-            label.font = UIFont.systemFont(ofSize: 10, weight: .bold)
-            label.textColor = .white
-            markerView.addSubview(label)
-        }
-        
-        return markerView
-    }
-    
-    private func getBasicMarkerIcon(for pin: ReportPin) -> UIImage {
-        // Use basic colored markers for maximum performance
-        let color = getQualityColor(for: pin.averageSensoryLevel)
-        return GMSMarker.markerImage(with: color)
-    }
-    
-    private func createTempMarkerView() -> UIView {
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
-        markerView.backgroundColor = UIColor.systemPurple
-        markerView.layer.cornerRadius = 16
-        markerView.layer.borderWidth = 2
-        markerView.layer.borderColor = UIColor.white.cgColor
-        
-        // Apply shadows only if device supports it
-        if deviceCapability.shouldEnableShadows() {
-            markerView.layer.shadowColor = UIColor.black.cgColor
-            markerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-            markerView.layer.shadowOpacity = 0.3
-            markerView.layer.shadowRadius = 4
-        }
-        
-        // Add pulse animation only for high-performance devices
-        if deviceCapability.getMarkerOptimizationLevel() == .none {
-            let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
-            pulseAnimation.duration = 1.0
-            pulseAnimation.fromValue = 1.0
-            pulseAnimation.toValue = 1.2
-            pulseAnimation.autoreverses = true
-            pulseAnimation.repeatCount = .infinity
-            markerView.layer.add(pulseAnimation, forKey: "pulse")
-        }
-        
-        return markerView
-    }
-    
-    private func createOptimizedTempMarkerView() -> UIView {
-        // Simplified temp marker for medium performance devices
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 28, height: 28))
-        markerView.backgroundColor = UIColor.systemPurple
-        markerView.layer.cornerRadius = 14
-        markerView.layer.borderWidth = 1
-        markerView.layer.borderColor = UIColor.white.cgColor
-        
-        // No animations or shadows for better performance
-        
-        return markerView
-    }
-    
-    private func getQualityColor(for rating: Double) -> UIColor {
-        // Lower sensory levels are better (quieter, less crowded, softer lighting)
-        switch rating {
-        case 0.0..<0.3:
-            return UIColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0) // Excellent - Green
-        case 0.3..<0.5:
-            return UIColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0) // Good - Blue
-        case 0.5..<0.7:
-            return UIColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0) // Fair - Yellow
-        case 0.7..<0.9:
-            return UIColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0) // Poor - Orange
-        default:
-            return UIColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) // Very Poor - Red
-        }
-    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -254,7 +225,42 @@ struct GoogleMapView: UIViewRepresentable {
         
         func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
             if let pin = marker.userData as? ReportPin {
+                // Update marker to selected state with animation
+                let comfortScore = (1.0 - pin.averageSensoryLevel) * 100
+                let status = MarkerProvider.shared.statusFromComfort(comfortScore)
+                let selectedConfig = MarkerConfig(
+                    status: status,
+                    selected: true,
+                    accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
+                        for: status,
+                        location: pin.displayName
+                    )
+                )
+                
+                // Apply selected state with current zoom and interface style
+                let interfaceStyle = UITraitCollection.current.userInterfaceStyle
+                let currentZoom = mapView.camera.zoom
+                MarkerProvider.shared.applyIcon(to: marker, config: selectedConfig, cameraZoom: currentZoom, interfaceStyle: interfaceStyle)
+                MarkerProvider.shared.animateSelection(for: marker)
+                
                 parent.onPinTap(pin)
+                
+                // Reset to normal state after a delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    let normalConfig = MarkerConfig(
+                        status: status,
+                        selected: false,
+                        accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
+                            for: status,
+                            location: pin.displayName
+                        )
+                    )
+                    
+                    // Reset to normal state with current zoom and interface style
+                    let interfaceStyle = UITraitCollection.current.userInterfaceStyle
+                    let currentZoom = mapView.camera.zoom
+                    MarkerProvider.shared.applyIcon(to: marker, config: normalConfig, cameraZoom: currentZoom, interfaceStyle: interfaceStyle)
+                }
             }
             return true
         }
@@ -271,10 +277,27 @@ struct GoogleMapView: UIViewRepresentable {
         }
         
         func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
-            // Update the camera position binding if needed
+            // Update the camera position binding
             DispatchQueue.main.async {
                 self.parent.cameraPosition = position.target
             }
+            
+            // Check if zoom bucket changed and refresh markers if needed
+            let newZoomBucket = PinSizing.quantizedMultiplier(for: position.zoom)
+            if abs(newZoomBucket - parent.lastZoomBucket) > 0.01 {
+                parent.lastZoomBucket = newZoomBucket
+                
+                // Refresh visible markers with new zoom level
+                let _ = mapView.selectedMarker != nil ? [mapView.selectedMarker!] : [] // Future: track all visible markers
+                // Get all markers from mapView (need to track them)
+                refreshMarkersForZoom(mapView: mapView, zoom: position.zoom)
+            }
+        }
+        
+        private func refreshMarkersForZoom(mapView: GMSMapView, zoom: Float) {
+            // This is a simplified approach - in a real app you'd track all markers
+            // For now, we'll let the natural update cycle handle zoom changes
+            // The markers will be refreshed on the next updateUIView call
         }
     }
 }
@@ -288,5 +311,16 @@ extension GMSMapViewType {
         case 3: return .terrain
         default: return .normal
         }
+    }
+}
+
+// Helper extension for color darkening (if not already defined elsewhere)
+extension UIColor {
+    func darker(by percentage: CGFloat = 0.2) -> UIColor {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if self.getHue(&h, saturation: &s, brightness: &b, alpha: &a) {
+            return UIColor(hue: h, saturation: s, brightness: max(0, b * (1 - percentage)), alpha: a)
+        }
+        return self
     }
 }

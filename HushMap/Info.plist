@@ -25,6 +25,8 @@
 	<string>alert</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>HushMap uses your microphone to measure ambient noise levels and provide accurate sensory information about places. This helps create better accessibility data for the community.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>HushMap uses speech recognition to convert your voice search queries into text, making the app more accessible for finding sensory-friendly places.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>HushMap needs your location to show nearby quiet places and help you navigate to sensory-friendly locations. Your location is used to find venues near you and provide accurate directions.</string>
 </dict>
