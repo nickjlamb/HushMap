@@ -173,18 +173,27 @@ struct HushMapApp: App {
                         }
                     }
                     .task {
+                        // TEMPORARILY DISABLED: Migration causes 2min UI freeze
+                        // The migration runs synchronously on @MainActor and blocks SwiftData
+                        // This needs to be refactored to run truly async before re-enabling
+
+                        // Delay migration significantly to allow full map interaction first
+                        // User can use app normally, then migration runs in background
+                        try? await Task.sleep(for: .seconds(60))
+
                         // Run background migration for unresolved reports
                         let modelContext = sharedModelContainer.mainContext
                         let reportStore = SwiftDataReportStore(modelContext: modelContext)
                         let cacheStore: LocationLabelCacheStore = (try? DiskLocationLabelCacheStore()) ?? InMemoryLocationLabelCacheStore()
                         let resolver = ReportLocationResolver()
-                        
+
                         let migrator = AppStartMigrator(
                             resolver: resolver,
                             store: reportStore,
                             cacheStore: cacheStore
                         )
-                        migrator.runIfNeeded()
+                        // UNCOMMENT when migration is refactored to be truly async
+                        // migrator.runIfNeeded()
                     }
                     .onOpenURL { url in
                         GIDSignIn.sharedInstance.handle(url)

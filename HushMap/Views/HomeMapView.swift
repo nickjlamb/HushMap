@@ -4,6 +4,7 @@ import CoreLocation
 import SwiftData
 import GoogleMaps
 import Combine
+import Foundation
 
 enum HomeMapSheet: Identifiable, Equatable {
     case about
@@ -44,7 +45,12 @@ struct HomeMapView: View {
     @StateObject private var deviceCapability = DeviceCapabilityService.shared
     @StateObject private var locationResolver = ReportLocationResolver()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Query private var reports: [Report]
+    @Environment(\.modelContext) private var modelContext
+
+    // Replace @Query with manual state to avoid blocking UI on SwiftData updates
+    @State private var reports: [Report] = []
+    @State private var isLoadingReports = false
+
     // Note: Removed Apple Maps position state - using currentCoordinate for Google Maps
     @State private var useClustering = true
     @State private var sortByRecent = false
@@ -53,6 +59,12 @@ struct HomeMapView: View {
     @State private var maxNoiseThreshold: Double = 1.0
     @State private var maxCrowdThreshold: Double = 1.0
     @State private var maxLightingThreshold: Double = 1.0
+
+    // Cache for filteredPins to avoid recomputing on every view update
+    @State private var cachedPins: [ReportPin] = []
+    @State private var lastReportsHash: Int = 0
+    @State private var updateTask: Task<Void, Never>?
+    @State private var refreshTimer: Timer?
     
     // Consolidated sheet state
     @State private var activeSheet: HomeMapSheet?
@@ -109,7 +121,7 @@ struct HomeMapView: View {
                 GoogleMapView(
                 mapType: $googleMapType,
                 cameraPosition: $currentCoordinate,
-                pins: filteredPins,
+                pins: cachedPins,
                 onPinTap: { pin in
                     selectedPin = pin
                     activeSheet = .pinDetail(pin)
@@ -120,7 +132,7 @@ struct HomeMapView: View {
                 },
                 onPOITap: { placeID, name, location in
                     print("User tapped POI: \(name) with ID: \(placeID)")
-                    
+
                     // Create place details from the POI information
                     let place = PlaceDetails(name: name, address: "", coordinate: location)
                     tempPin = place
@@ -130,15 +142,26 @@ struct HomeMapView: View {
             )
             .ignoresSafeArea(.all, edges: .all)
             .onAppear {
+                // Load reports asynchronously to avoid blocking UI
+                loadReportsAsync()
+
+                // Update pins cache immediately for initial render (will be empty at first)
+                updateFilteredPinsNow()
+
                 // Request location permission (checks services asynchronously)
                 locationManager.requestLocationPermission()
-                
+
+                // Set up periodic refresh to catch new reports from Firestore
+                refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+                    loadReportsAsync()
+                }
+
                 // If location is already available, use it immediately
                 if let location = locationManager.lastLocation, !hasInitializedLocation {
                     currentCoordinate = location
                     hasInitializedLocation = true
                 }
-                
+
                 // Listen for coordinate centering notifications from Nearby view
                 NotificationCenter.default.addObserver(
                     forName: Notification.Name("CenterMapOnCoordinate"),
@@ -153,18 +176,28 @@ struct HomeMapView: View {
             .onReceive(locationManager.$lastLocation) { newLocation in
                 // Only update map position ONCE when user location first becomes available
                 if let newLocation = newLocation, !hasInitializedLocation {
+                    print("📍 Setting initial location: \(newLocation)")
                     currentCoordinate = newLocation
                     hasInitializedLocation = true
-                    
+
                     // Post notification to animate camera to user location with proper zoom
                     NotificationCenter.default.post(
                         name: Notification.Name("CenterMapOnCoordinate"),
                         object: nil,
                         userInfo: ["coordinate": newLocation]
                     )
+                } else if newLocation != nil {
+                    print("⚠️ Ignoring location update - already initialized")
                 }
             }
             .onDisappear {
+                // Cancel any pending pin updates
+                updateTask?.cancel()
+
+                // Stop periodic refresh timer
+                refreshTimer?.invalidate()
+                refreshTimer = nil
+
                 // Clean up notification observer to prevent memory leak
                 NotificationCenter.default.removeObserver(self, name: Notification.Name("CenterMapOnCoordinate"), object: nil)
             }
@@ -275,26 +308,66 @@ struct HomeMapView: View {
                 PinDetailView(pin: pin)
             }
         }
-        .task {
-            // Resolve locations for reports when view appears
-            await locationResolver.resolveLocationsForReports(Array(reports))
+        .onChange(of: [maxNoiseThreshold, maxCrowdThreshold, maxLightingThreshold]) { _, _ in
+            // User filter changes - update immediately for responsiveness
+            updateFilteredPinsNow()
         }
-        .onChange(of: reports.count) { _, _ in
-            // Resolve locations when new reports are added
-            Task {
-                await locationResolver.resolveLocationsForReports(Array(reports))
-            }
+        .onChange(of: useClustering) { _, _ in
+            updateFilteredPinsNow()
+        }
+        .onChange(of: sortByRecent) { _, _ in
+            updateFilteredPinsNow()
+        }
+        .onChange(of: startDate) { _, _ in
+            updateFilteredPinsNow()
+        }
+        .onChange(of: endDate) { _, _ in
+            updateFilteredPinsNow()
         }
     }
     
+    // Load reports asynchronously to avoid blocking main thread
+    private func loadReportsAsync() {
+        guard !isLoadingReports else { return }
+        isLoadingReports = true
+
+        Task.detached {
+            // Fetch reports on background thread
+            let descriptor = FetchDescriptor<Report>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+
+            do {
+                let fetchedReports = try await Task { @MainActor in
+                    try modelContext.fetch(descriptor)
+                }.value
+
+                // Update state on main thread
+                await MainActor.run {
+                    // Only update if report count changed to avoid unnecessary updates
+                    if self.reports.count != fetchedReports.count {
+                        self.reports = fetchedReports
+                        self.scheduleUpdateFilteredPins(delay: .milliseconds(500))
+                    }
+                    self.isLoadingReports = false
+                }
+            } catch {
+                await MainActor.run {
+                    print("Error loading reports: \(error)")
+                    self.isLoadingReports = false
+                }
+            }
+        }
+    }
+
     private func handlePlaceSelection(_ place: PlaceDetails) {
         // Set the temporary pin
         tempPin = place
         selectedPlace = place
-        
+
         // Center the Google Maps on the selected place
         currentCoordinate = place.coordinate
-        
+
         // Show the prediction sheet after a brief delay to allow the map to update
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             activeSheet = .placePrediction(selectedPlace!)
@@ -516,44 +589,80 @@ struct HomeMapView: View {
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
-    var filteredPins: [ReportPin] {
+    // Compute hash of filter dependencies to detect changes
+    private func computeFilterHash() -> Int {
+        var hasher = Hasher()
+        hasher.combine(reports.count)
+        hasher.combine(startDate)
+        hasher.combine(endDate)
+        hasher.combine(maxNoiseThreshold)
+        hasher.combine(maxCrowdThreshold)
+        hasher.combine(maxLightingThreshold)
+        hasher.combine(useClustering)
+        hasher.combine(sortByRecent)
+        return hasher.finalize()
+    }
+
+    // Debounced update to batch rapid changes (e.g., during migration batches)
+    private func scheduleUpdateFilteredPins(delay: Duration = .milliseconds(300)) {
+        // Cancel any pending update
+        updateTask?.cancel()
+
+        // Schedule new update
+        updateTask = Task {
+            do {
+                try await Task.sleep(for: delay)
+                if !Task.isCancelled {
+                    updateFilteredPinsNow()
+                }
+            } catch {}
+        }
+    }
+
+    // Immediate update without debouncing
+    private func updateFilteredPinsNow() {
+        let currentHash = computeFilterHash()
+        guard currentHash != lastReportsHash else { return }
+
+        lastReportsHash = currentHash
+
         // Filter reports based on user criteria
         let filtered = reports.filter { report in
             // Date filter
             let isInDateRange = report.timestamp >= startDate && report.timestamp <= endDate
-            
+
             // Sensory level filters (reports with levels <= threshold)
             let meetsNoiseThreshold = report.noise <= maxNoiseThreshold
             let meetsCrowdThreshold = report.crowds <= maxCrowdThreshold
             let meetsLightingThreshold = report.lighting <= maxLightingThreshold
-            
+
             return isInDateRange && meetsNoiseThreshold && meetsCrowdThreshold && meetsLightingThreshold
         }
-        
+
         // Convert to pins
         var pins: [ReportPin] = []
-        
+
         // Use performance-aware clustering
         let shouldCluster = useClustering || deviceCapability.shouldUseClustering(for: filtered.count)
-        
+
         if shouldCluster {
             // Group by location identifier and create one pin per location
             let groupedReports = Dictionary(grouping: filtered) { $0.locationIdentifier }
-            
+
             for (_, reportsAtLocation) in groupedReports {
                 if let representativeReport = reportsAtLocation.first {
                     // Calculate average sensory levels
                     let avgNoise = reportsAtLocation.map { $0.noise }.reduce(0, +) / Double(reportsAtLocation.count)
                     let avgCrowds = reportsAtLocation.map { $0.crowds }.reduce(0, +) / Double(reportsAtLocation.count)
                     let avgLighting = reportsAtLocation.map { $0.lighting }.reduce(0, +) / Double(reportsAtLocation.count)
-                    
+
                     let displayName = representativeReport.displayName ?? reportsAtLocation.compactMap { $0.displayName }.first
                     let displayTier = representativeReport.displayTier ?? reportsAtLocation.compactMap { $0.displayTier }.first
                     let avgQuietScore = Int((reportsAtLocation.map { $0.quietScore }.reduce(0, +)) / reportsAtLocation.count)
-                    
+
                     // Calculate average confidence
                     let avgConfidence = reportsAtLocation.compactMap { $0.confidence }.reduce(0, +) / Double(max(reportsAtLocation.compactMap { $0.confidence }.count, 1))
-                    
+
                     // For clustered reports, show the most recent contributor
                     let mostRecentReport = reportsAtLocation.max(by: { $0.timestamp < $1.timestamp }) ?? representativeReport
                     let contributorName: String?
@@ -599,20 +708,20 @@ struct HomeMapView: View {
                 )
             }
         }
-        
+
         // Sort if requested
         if sortByRecent {
             pins = pins.sorted { $0.latestTimestamp > $1.latestTimestamp }
         }
-        
+
         // Limit pins for performance on older devices
         let maxPins = deviceCapability.mapSettings.maxPinsBeforeClustering
         if pins.count > maxPins && !shouldCluster {
             // Take the most recent pins if we're not clustering
             pins = Array(pins.prefix(maxPins))
         }
-        
-        return pins
+
+        cachedPins = pins
     }
 
 }
