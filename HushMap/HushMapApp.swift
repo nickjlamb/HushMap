@@ -187,7 +187,7 @@ struct HushMapApp: App {
                         let cacheStore: LocationLabelCacheStore = (try? DiskLocationLabelCacheStore()) ?? InMemoryLocationLabelCacheStore()
                         let resolver = ReportLocationResolver()
 
-                        let migrator = AppStartMigrator(
+                        _ = AppStartMigrator(
                             resolver: resolver,
                             store: reportStore,
                             cacheStore: cacheStore

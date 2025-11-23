@@ -11,7 +11,7 @@ struct BottomSheetView: View {
 
         func height(for screenHeight: CGFloat) -> CGFloat {
             switch self {
-            case .peek: return 160
+            case .peek: return 200
             case .half: return screenHeight * 0.5
             case .full: return screenHeight * 0.9
             }
@@ -46,6 +46,7 @@ struct BottomSheetView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var lastDragValue: CGFloat = 0
     @State private var activeModalSheet: ModalSheet?
+    @State private var internalState: SheetState = .peek
 
     // Screen dimensions
     @Environment(\.safeAreaInsets) private var safeAreaInsets
@@ -89,7 +90,9 @@ struct BottomSheetView: View {
     }
     
     private var currentHeight: CGFloat {
-        currentState.height(for: screenHeight) + dragOffset
+        let height = internalState.height(for: screenHeight) + dragOffset
+        print("📐 [BottomSheet] Computing height: \(height)pt for state: \(internalState)")
+        return height
     }
     
     // MARK: - Body
@@ -106,6 +109,9 @@ struct BottomSheetView: View {
                         switch currentState {
                         case .peek:
                             peekContent
+                                .onAppear {
+                                    print("🟡 [BottomSheet] Peek content appeared. Current state: \(currentState)")
+                                }
                         case .half:
                             halfContent
                         case .full:
@@ -115,6 +121,7 @@ struct BottomSheetView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, safeAreaInsets.bottom + 20)
                 }
+                .scrollDisabled(currentState == .peek)
             }
             .frame(height: currentHeight)
             .frame(maxWidth: .infinity)
@@ -122,14 +129,11 @@ struct BottomSheetView: View {
             .cornerRadius(currentState.cornerRadius, corners: [.topLeft, .topRight])
             .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: -5)
             .offset(y: max(0, geometry.size.height - currentHeight))
-            .gesture(
-                TapGesture()
-                    .onEnded { _ in
-                        expandBottomSheet()
-                    }
-                    .simultaneously(with: dragGesture)
-            )
-            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: currentState)
+            .onTapGesture {
+                // Consume taps on the sheet to prevent them from bubbling to parent
+                print("💚 [BottomSheet] Sheet tapped - consuming to prevent parent reset")
+            }
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: internalState)
             .animation(.spring(response: 0.3, dampingFraction: 0.9), value: dragOffset)
             .sheet(item: $activeModalSheet) { sheet in
                 switch sheet {
@@ -185,6 +189,17 @@ struct BottomSheetView: View {
                 showLegend = (newValue == .legend)
                 showAbout = (newValue == .about)
             }
+            .onChange(of: currentState) { oldValue, newValue in
+                print("🔄 [BottomSheet] Binding state changed: \(oldValue) → \(newValue)")
+                internalState = newValue
+                print("   Old height: \(oldValue.height(for: screenHeight))pt")
+                print("   New height: \(newValue.height(for: screenHeight))pt")
+                print("   Screen height: \(screenHeight)pt")
+            }
+            .onAppear {
+                internalState = currentState
+                print("🟡 [BottomSheet] Initialized internal state to: \(internalState)")
+            }
         }
     }
     
@@ -193,6 +208,9 @@ struct BottomSheetView: View {
         RoundedRectangle(cornerRadius: 3)
             .fill(handleColor)
             .frame(width: 40, height: 6)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+            .gesture(dragGesture)
             .accessibilityLabel("Drag to expand or collapse")
             .accessibilityHint("Swipe up or down to change sheet size")
     }
@@ -202,6 +220,7 @@ struct BottomSheetView: View {
         VStack(spacing: 16) {
             // Primary action - clean and focused
             Button(action: {
+                print("🟣 [BottomSheet] Log My Visit button tapped!")
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.impactOccurred()
                 showAddReport = true
@@ -210,13 +229,13 @@ struct BottomSheetView: View {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
                         .foregroundColor(.white)
-                    
+
                     Text("Log My Visit")
                         .hushButton()
                         .foregroundColor(.white)
-                    
+
                     Spacer()
-                    
+
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
@@ -230,12 +249,15 @@ struct BottomSheetView: View {
                 .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
             }
             .buttonStyle(.plain)
-            
+
             // Subtle hint to expand - clean design
             Button(action: {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    currentState = .half
-                }
+                print("🔵 [BottomSheet] More options button tapped!")
+                print("🔵 [BottomSheet] Changing state from \(currentState) to .half")
+                currentState = .half
+                internalState = .half
+                print("🔵 [BottomSheet] State after change: \(currentState)")
+                print("🔵 [BottomSheet] Internal state: \(internalState)")
             }) {
                 HStack {
                     Text("More options")
@@ -243,9 +265,9 @@ struct BottomSheetView: View {
                         .foregroundColor(
                             highContrastMode ? .black.opacity(0.8) : .hushTertiaryText
                         )
-                    
+
                     Spacer()
-                    
+
                     Image(systemName: "chevron.up")
                         .font(.caption2)
                         .foregroundColor(
@@ -693,6 +715,7 @@ struct BottomSheetView: View {
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
+                print("🔴 [BottomSheet] Drag gesture detected: \(value.translation.height)")
                 // Calculate drag offset (negative = dragging up, positive = dragging down)
                 let translation = value.translation.height
                 dragOffset = translation

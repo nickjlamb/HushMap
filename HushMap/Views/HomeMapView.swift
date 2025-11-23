@@ -331,31 +331,24 @@ struct HomeMapView: View {
         guard !isLoadingReports else { return }
         isLoadingReports = true
 
-        Task.detached {
-            // Fetch reports on background thread
+        Task { @MainActor in
+            // Fetch reports on main actor (required for SwiftData)
             let descriptor = FetchDescriptor<Report>(
                 sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
             )
 
             do {
-                let fetchedReports = try await Task { @MainActor in
-                    try modelContext.fetch(descriptor)
-                }.value
+                let fetchedReports = try modelContext.fetch(descriptor)
 
-                // Update state on main thread
-                await MainActor.run {
-                    // Only update if report count changed to avoid unnecessary updates
-                    if self.reports.count != fetchedReports.count {
-                        self.reports = fetchedReports
-                        self.scheduleUpdateFilteredPins(delay: .milliseconds(500))
-                    }
-                    self.isLoadingReports = false
+                // Only update if report count changed to avoid unnecessary updates
+                if self.reports.count != fetchedReports.count {
+                    self.reports = fetchedReports
+                    self.scheduleUpdateFilteredPins(delay: .milliseconds(500))
                 }
+                self.isLoadingReports = false
             } catch {
-                await MainActor.run {
-                    print("Error loading reports: \(error)")
-                    self.isLoadingReports = false
-                }
+                print("Error loading reports: \(error)")
+                self.isLoadingReports = false
             }
         }
     }

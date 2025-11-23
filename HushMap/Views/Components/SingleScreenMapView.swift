@@ -40,9 +40,9 @@ struct SingleScreenMapView: View {
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var shouldFocusSearch = false
-    @State private var bottomSheetOffset: CGFloat = 0
-    @State private var currentBottomSheetState: BottomSheetView.SheetState = .peek
-    
+    @State private var showBottomSheet = true
+    @State private var bottomSheetDetent: PresentationDetent = .height(150)
+
     // Map-related state
     @State private var currentMapStyle: GMSMapViewType = .normal
     
@@ -237,7 +237,7 @@ struct SingleScreenMapView: View {
                 }
                 
                 // Floating search bar - hide when bottom sheet is fully expanded
-                if currentBottomSheetState != .full {
+                if bottomSheetDetent != .large {
                     VStack {
                         HStack {
                             FloatingSearchBar(
@@ -264,65 +264,7 @@ struct SingleScreenMapView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 
-                // Bottom sheet overlay
-                VStack {
-                    Spacer()
-                    
-                    BottomSheetView(
-                        currentState: $currentBottomSheetState,
-                        showLegend: $showLegend,
-                        showAbout: $showAbout,
-                        showAddReport: .init(
-                            get: { 
-                                if case .addReport = activeSheet {
-                                    return true
-                                } else {
-                                    return false
-                                }
-                            },
-                            set: { shouldShow in
-                                if shouldShow {
-                                    activeSheet = .addReport(nil, nil)
-                                } else {
-                                    activeSheet = nil
-                                }
-                            }
-                        ),
-                        showNearby: .init(
-                            get: { activeSheet == .nearby },
-                            set: { shouldShow in
-                                if shouldShow {
-                                    activeSheet = .nearby
-                                } else {
-                                    activeSheet = nil
-                                }
-                            }
-                        ),
-                        showProfile: .init(
-                            get: { activeSheet == .profile },
-                            set: { shouldShow in
-                                if shouldShow {
-                                    activeSheet = .profile
-                                } else {
-                                    activeSheet = nil
-                                }
-                            }
-                        ),
-                        shouldFocusSearch: $shouldFocusSearch,
-                        currentMapStyle: $currentMapStyle,
-                        onMapStyleSelected: { _ in
-                            activeSheet = .mapStylePicker
-                        },
-                        useClustering: $useClustering,
-                        sortByRecent: $sortByRecent,
-                        startDate: $startDate,
-                        endDate: $endDate,
-                        maxNoiseThreshold: $maxNoiseThreshold,
-                        maxCrowdThreshold: $maxCrowdThreshold,
-                        maxLightingThreshold: $maxLightingThreshold
-                    )
-                    .zIndex(1)
-                }
+                // Native bottom sheet will be presented via .sheet() modifier below
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -380,19 +322,61 @@ struct SingleScreenMapView: View {
                 )
             }
         }
+        .sheet(isPresented: $showBottomSheet) {
+            NativeBottomSheetContent(
+                showAddReport: .init(
+                    get: {
+                        if case .addReport = activeSheet {
+                            return true
+                        }
+                        return false
+                    },
+                    set: { shouldShow in
+                        if shouldShow {
+                            activeSheet = .addReport(nil, nil)
+                        } else {
+                            activeSheet = nil
+                        }
+                    }
+                ),
+                showNearby: .init(
+                    get: { activeSheet == .nearby },
+                    set: { shouldShow in
+                        if shouldShow {
+                            activeSheet = .nearby
+                        } else {
+                            activeSheet = nil
+                        }
+                    }
+                ),
+                showProfile: .init(
+                    get: { activeSheet == .profile },
+                    set: { shouldShow in
+                        if shouldShow {
+                            activeSheet = .profile
+                        } else {
+                            activeSheet = nil
+                        }
+                    }
+                ),
+                showLegend: $showLegend,
+                showAbout: $showAbout,
+                currentMapStyle: $currentMapStyle,
+                detent: $bottomSheetDetent,
+                onMapStyleSelected: { _ in
+                    activeSheet = .mapStylePicker
+                }
+            )
+            .presentationDetents([.height(150), .medium, .large], selection: $bottomSheetDetent)
+            .presentationDragIndicator(.hidden)
+            .presentationBackgroundInteraction(.enabled(upThrough: .large))
+            .interactiveDismissDisabled()
+        }
         .onChange(of: activeSheet) { _, sheet in
             if sheet == nil {
                 // Clear prefilled data when sheet is dismissed
                 prefilledReportLocation = nil
                 prefilledReportLocationName = nil
-            }
-        }
-        .onTapGesture {
-            // Handle tap outside bottom sheet to close it to peek state
-            if currentBottomSheetState != .peek {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    currentBottomSheetState = .peek
-                }
             }
         }
         .environment(\.colorScheme, highContrastMode ? .light : colorScheme)
