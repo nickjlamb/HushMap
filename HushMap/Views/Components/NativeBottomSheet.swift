@@ -65,29 +65,29 @@ struct NativeBottomSheetContent: View {
             // Quick access buttons - only show when expanded
             if !isCollapsed {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                quickButton(
-                    title: "Profile",
-                    icon: "person.circle.fill",
-                    color: .hushBackground
-                ) {
-                    showProfile = true
-                }
+                    quickButton(
+                        title: "Profile",
+                        icon: "person.circle.fill",
+                        color: .hushBackground
+                    ) {
+                        showProfile = true
+                    }
 
-                quickButton(
-                    title: "Find Nearby",
-                    icon: "location.circle.fill",
-                    color: .hushWaterRoad
-                ) {
-                    showNearby = true
-                }
+                    quickButton(
+                        title: "Find Nearby",
+                        icon: "location.circle.fill",
+                        color: .hushWaterRoad
+                    ) {
+                        showNearby = true
+                    }
 
-                quickButton(
-                    title: "Legend",
-                    icon: "list.bullet.rectangle.fill",
-                    color: .gray
-                ) {
-                    showLegend = true
-                }
+                    quickButton(
+                        title: "Legend",
+                        icon: "list.bullet.rectangle.fill",
+                        color: .gray
+                    ) {
+                        showLegend = true
+                    }
 
                     quickButton(
                         title: "Map Style",
@@ -95,6 +95,14 @@ struct NativeBottomSheetContent: View {
                         color: .hushHighRisk
                     ) {
                         onMapStyleSelected(currentMapStyle)
+                    }
+
+                    quickButton(
+                        title: "About",
+                        icon: "info.circle.fill",
+                        color: .blue
+                    ) {
+                        showAbout = true
                     }
                 }
                 .padding(.horizontal, 20)
@@ -104,6 +112,24 @@ struct NativeBottomSheetContent: View {
         }
         .frame(maxWidth: .infinity)
         .background(backgroundColor)
+        .sheet(isPresented: $showLegend) {
+            NavigationView {
+                MapLegendSheetView()
+                    .navigationTitle("Map Legend")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showLegend = false
+                            }
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showAbout) {
+            AboutView()
+        }
     }
 
     private func quickButton(
