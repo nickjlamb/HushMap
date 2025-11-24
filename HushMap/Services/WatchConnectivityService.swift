@@ -184,6 +184,17 @@ class WatchConnectivityService: NSObject, ObservableObject {
             try context.save()
             print("✅ Saved Watch log entry")
 
+            // Upload report to Firestore for community sharing
+            Task {
+                do {
+                    let syncService = ReportSyncService.shared
+                    try await syncService.syncReport(report)
+                    print("✅ Watch report synced to Firestore")
+                } catch {
+                    print("⚠️ Failed to sync Watch report to Firestore: \(error.localizedDescription)")
+                }
+            }
+
             // Send updated data back to Watch
             sendUpdateToWatch()
         } catch {

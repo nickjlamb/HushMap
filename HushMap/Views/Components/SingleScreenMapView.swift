@@ -84,7 +84,10 @@ struct SingleScreenMapView: View {
     
     // Location service for proximity filtering
     @StateObject private var locationManager = LocationManager()
-    
+
+    // Community stats
+    @State private var worldwideReportCount: Int?
+
     // Find current user in SwiftData based on authentication
     private var currentSwiftDataUser: User? {
         guard let authenticatedUser = authService.currentUser else { return nil }
@@ -263,8 +266,40 @@ struct SingleScreenMapView: View {
                     .zIndex(2)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                
+
+                // Community Stats Badge - Bottom Left
+                VStack {
+                    Spacer()
+                    HStack(alignment: .bottom) {
+                        if let count = worldwideReportCount {
+                            communityStatsBadge(count: count)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 200) // Above bottom sheet
+                }
+                .allowsHitTesting(false) // Don't block map interaction
+                .zIndex(1)
+
                 // Native bottom sheet will be presented via .sheet() modifier below
+            }
+        }
+        .task {
+            // Fetch worldwide count when view appears
+            await fetchWorldwideReportCount()
+
+            // Refresh count every 2 minutes to catch new reports
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(120))
+                await fetchWorldwideReportCount()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Refresh when app comes back to foreground
+            Task {
+                await fetchWorldwideReportCount()
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -471,6 +506,53 @@ struct SingleScreenMapView: View {
                     hasSetInitialLocation = true
                 }
             }
+        }
+    }
+
+    // MARK: - Community Stats Badge
+
+    @ViewBuilder
+    private func communityStatsBadge(count: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "globe.americas.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.blue)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count.formatted())")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("shared experiences")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Fetch Worldwide Count
+
+    private func fetchWorldwideReportCount() async {
+        print("🌍 Fetching worldwide report count...")
+        do {
+            let firestoreReports = try await FirestoreService.shared.downloadAllReports()
+            await MainActor.run {
+                worldwideReportCount = firestoreReports.count
+                print("🌍 ✅ Fetched \(firestoreReports.count) reports worldwide")
+            }
+        } catch {
+            print("🌍 ❌ Failed to fetch worldwide report count: \(error)")
         }
     }
 }

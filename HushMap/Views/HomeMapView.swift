@@ -99,11 +99,18 @@ struct HomeMapView: View {
     @State private var googleMapType: GMSMapViewType = .normal
     @State private var hasInitializedLocation = false // Track if we've set initial location
 
+    // Community stats
+    @State private var worldwideReportCount: Int?
+
     var body: some View {
         ZStack {
             // Background matching bottom nav bar
             Color.hushMapShape.opacity(0.95)
                 .ignoresSafeArea(.all, edges: .all)
+                .task {
+                    // Fetch worldwide count when view appears
+                    await fetchWorldwideReportCount()
+                }
             
             // Show error state if there's a location error
             if let locationError = locationManager.locationError {
@@ -202,16 +209,23 @@ struct HomeMapView: View {
                 NotificationCenter.default.removeObserver(self, name: Notification.Name("CenterMapOnCoordinate"), object: nil)
             }
 
-            // Map Legend
+            // Map Legend and Community Stats - ALWAYS VISIBLE FOR TESTING
             VStack {
                 Spacer()
-                HStack {
+                HStack(alignment: .bottom) {
+                    // Community Stats Badge (bottom left) - ALWAYS SHOW
+                    communityStatsBadge(count: worldwideReportCount ?? 999)
+                        .background(Color.red.opacity(0.3)) // DEBUG: Red background to make it obvious
+
                     Spacer()
+
+                    // Legend (bottom right)
                     MapLegendView(isVisible: $showLegend)
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.trailing, 16)
-            .padding(.bottom, 120) // Account for tab bar
+            .padding(.bottom, 200) // Position above the bottom sheet
+            .background(Color.blue.opacity(0.2)) // DEBUG: Blue background to see the container
             
             // Hamburger Menu
             if showHamburgerMenu {
@@ -715,6 +729,71 @@ struct HomeMapView: View {
         }
 
         cachedPins = pins
+    }
+
+    // MARK: - Community Stats Badge
+
+    @ViewBuilder
+    private func communityStatsBadge(count: Int) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "globe.americas.fill")
+                .font(.caption)
+                .foregroundColor(.hushBackground)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(count.formatted())")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.hushPrimaryText)
+
+                Text("reports worldwide")
+                    .font(.caption2)
+                    .foregroundColor(.hushSecondaryText)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.hushMapShape.opacity(0.95))
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(count) reports from the HushMap community worldwide")
+    }
+
+    @ViewBuilder
+    private func communityStatsLoadingBadge() -> some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .scaleEffect(0.7)
+
+            Text("Loading...")
+                .font(.caption2)
+                .foregroundColor(.hushSecondaryText)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.hushMapShape.opacity(0.95))
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
+    }
+
+    // MARK: - Fetch Worldwide Count
+
+    private func fetchWorldwideReportCount() async {
+        print("🌍 Fetching worldwide report count...")
+        do {
+            let firestoreReports = try await FirestoreService.shared.downloadAllReports()
+            await MainActor.run {
+                worldwideReportCount = firestoreReports.count
+                print("🌍 ✅ Fetched \(firestoreReports.count) reports worldwide")
+            }
+        } catch {
+            print("🌍 ❌ Failed to fetch worldwide report count: \(error)")
+        }
     }
 
 }

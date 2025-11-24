@@ -39,7 +39,7 @@ struct ProfileView: View {
                 
                 // Points Section
                 pointsSummaryView
-                
+
                 // Sensory Profile Section
                 sensoryProfileSectionView
                 
@@ -216,7 +216,7 @@ struct ProfileView: View {
             }
         }
     }
-    
+
     private var pointsSummaryView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quiet Explorer Points")
@@ -981,12 +981,12 @@ struct ProfileView: View {
     private func clearUserPreferences() {
         // Clear any additional UserDefaults keys
         let userDefaults = UserDefaults.standard
-        
+
         // Remove app-specific preferences
         userDefaults.removeObject(forKey: "appleUserID")
         userDefaults.removeObject(forKey: "appleUserName")
         userDefaults.removeObject(forKey: "appleUserEmail")
-        
+
         // You can add more UserDefaults cleanup here as needed
         // userDefaults.removeObject(forKey: "userPreferences")
         // userDefaults.removeObject(forKey: "appSettings")

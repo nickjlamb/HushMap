@@ -192,6 +192,11 @@ struct FirestoreReport: Identifiable {
             timestamp: timestamp
         )
 
+        // Preserve the original UUID from Firestore document ID
+        if let uuid = UUID(uuidString: id) {
+            report.id = uuid
+        }
+
         report.displayName = displayName
         report.displayTierRaw = displayTierRaw
         report.confidence = confidence
