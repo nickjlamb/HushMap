@@ -4,6 +4,7 @@ import CoreLocation
 struct PlacePredictionView: View {
     let place: PlaceDetails
     @Binding var isPresented: Bool
+    var onPredictionRequested: (() -> Void)? = nil
     @State private var prediction: VenuePredictionResponse?
     @State private var isLoading = false
     @State private var showVisitDetails = false
@@ -399,7 +400,10 @@ struct PlacePredictionView: View {
     
     private func generatePrediction() {
         isLoading = true
-        
+
+        // Notify parent that prediction was requested (e.g., to show purple pin)
+        onPredictionRequested?()
+
         // Create combined date from selected day and time
         let calendar = Calendar.current
         let timeComponents = calendar.dateComponents([.hour, .minute], from: selectedTime)

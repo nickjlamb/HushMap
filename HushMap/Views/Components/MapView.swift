@@ -21,9 +21,11 @@ struct MapView: UIViewRepresentable {
 
     // POI tap callback (placeID, name, coordinate)
     let onPOITap: ((String, String, CLLocationCoordinate2D) -> Void)?
-    
+
+    // Temporary pins for AI predictions (purple markers)
+    let tempPins: [PlaceDetails]
+
     @State private var cameraPosition: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-    @State private var tempPin: PlaceDetails?
     
     @ObservedObject private var deviceCapability = DeviceCapabilityService.shared
     private let googleMapsService = GoogleMapsService.shared
@@ -58,7 +60,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.updateMarkers(
             on: mapView,
             pins: pins,
-            tempPin: tempPin,
+            tempPins: tempPins,
             deviceCapability: deviceCapability
         )
 
@@ -70,11 +72,11 @@ struct MapView: UIViewRepresentable {
         mapView.mapType = mapStyle
 
         // Only update markers if pins have actually changed
-        if context.coordinator.needsMarkerUpdate(pins: pins, tempPin: tempPin) {
+        if context.coordinator.needsMarkerUpdate(pins: pins, tempPins: tempPins) {
             context.coordinator.updateMarkers(
                 on: mapView,
                 pins: pins,
-                tempPin: tempPin,
+                tempPins: tempPins,
                 deviceCapability: deviceCapability
             )
         }
@@ -110,7 +112,7 @@ struct MapView: UIViewRepresentable {
     class Coordinator: NSObject, GMSMapViewDelegate {
         var parent: MapView
         private var currentPins: [ReportPin] = []
-        private var currentTempPin: PlaceDetails?
+        private var currentTempPins: [PlaceDetails] = []
         private var markers: [GMSMarker] = []
 
         init(_ parent: MapView) {
@@ -118,21 +120,24 @@ struct MapView: UIViewRepresentable {
         }
 
         // Check if markers need to be updated
-        func needsMarkerUpdate(pins: [ReportPin], tempPin: PlaceDetails?) -> Bool {
+        func needsMarkerUpdate(pins: [ReportPin], tempPins: [PlaceDetails]) -> Bool {
             // Check if pin count changed
             if pins.count != currentPins.count {
                 return true
             }
 
-            // Check if temp pin changed
-            if (tempPin == nil) != (currentTempPin == nil) {
+            // Check if temp pins changed
+            if tempPins.count != currentTempPins.count {
                 return true
             }
 
-            if let tp1 = tempPin, let tp2 = currentTempPin {
-                if tp1.name != tp2.name ||
-                   abs(tp1.coordinate.latitude - tp2.coordinate.latitude) > 0.00001 ||
-                   abs(tp1.coordinate.longitude - tp2.coordinate.longitude) > 0.00001 {
+            // Check if any temp pin changed
+            for (index, tp) in tempPins.enumerated() {
+                guard index < currentTempPins.count else { return true }
+                let currentTp = currentTempPins[index]
+                if tp.name != currentTp.name ||
+                   abs(tp.coordinate.latitude - currentTp.coordinate.latitude) > 0.00001 ||
+                   abs(tp.coordinate.longitude - currentTp.coordinate.longitude) > 0.00001 {
                     return true
                 }
             }
@@ -153,20 +158,20 @@ struct MapView: UIViewRepresentable {
         }
 
         // Update markers on the map
-        func updateMarkers(on mapView: GMSMapView, pins: [ReportPin], tempPin: PlaceDetails?, deviceCapability: DeviceCapabilityService) {
+        func updateMarkers(on mapView: GMSMapView, pins: [ReportPin], tempPins: [PlaceDetails], deviceCapability: DeviceCapabilityService) {
             // Clear existing markers
             markers.forEach { $0.map = nil }
             markers.removeAll()
 
             // Add new markers using the parent's addPinsToMap logic
-            addMarkersToMap(mapView: mapView, pins: pins, tempPin: tempPin)
+            addMarkersToMap(mapView: mapView, pins: pins, tempPins: tempPins)
 
             // Update tracking
             currentPins = pins
-            currentTempPin = tempPin
+            currentTempPins = tempPins
         }
 
-        private func addMarkersToMap(mapView: GMSMapView, pins: [ReportPin], tempPin: PlaceDetails?) {
+        private func addMarkersToMap(mapView: GMSMapView, pins: [ReportPin], tempPins: [PlaceDetails]) {
             // Add report pins with new teardrop markers
             for pin in pins {
                 let marker = GMSMarker()
@@ -199,19 +204,19 @@ struct MapView: UIViewRepresentable {
                 markers.append(marker)
             }
 
-            // Add temporary pin if available
-            if let tempPin = tempPin {
+            // Add temporary pins (purple AI prediction markers)
+            for tempPin in tempPins {
                 let marker = GMSMarker()
                 marker.position = tempPin.coordinate
                 marker.title = tempPin.name
-                marker.snippet = "Tap for prediction"
+                marker.snippet = "AI Prediction"
 
                 if MarkerStyleConfig.mode == .googleDefault {
                     marker.iconView = nil
                     marker.icon = GMSMarker.markerImage(with: .systemPurple)
                     marker.groundAnchor = CGPoint(x: 0.5, y: 1.0)
                     marker.tracksViewChanges = false
-                    marker.accessibilityLabel = "Predicted location: \(tempPin.name)"
+                    marker.accessibilityLabel = "AI Prediction: \(tempPin.name)"
                 } else {
                     let interfaceStyle = UITraitCollection.current.userInterfaceStyle
                     let currentZoom = mapView.camera.zoom
@@ -238,7 +243,7 @@ struct MapView: UIViewRepresentable {
                     marker.tracksViewChanges = false
 
                     containerView.isAccessibilityElement = true
-                    containerView.accessibilityLabel = "Predicted location: \(tempPin.name)"
+                    containerView.accessibilityLabel = "AI Prediction: \(tempPin.name)"
                 }
 
                 marker.userData = tempPin

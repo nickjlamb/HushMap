@@ -100,6 +100,9 @@ struct SingleScreenMapView: View {
     @State private var worldwideReportCount: Int?
     @State private var communityStats: CommunityStats?
 
+    // Temporary pins for AI predictions (purple markers on map)
+    @State private var tempPins: [PlaceDetails] = []
+
     // Find current user in SwiftData based on authentication
     private var currentSwiftDataUser: User? {
         guard let authenticatedUser = authService.currentUser else { return nil }
@@ -245,10 +248,11 @@ struct SingleScreenMapView: View {
                         activeSheet = .locationReport(pin)
                     },
                     onPOITap: { placeID, name, location in
-                        // When user taps a Google Maps POI, show place prediction view
+                        // When user taps a Google Maps POI, show prediction view (purple pin appears later)
                         let place = PlaceDetails(name: name, address: "", coordinate: location)
                         activeSheet = .placePrediction(place)
-                    }
+                    },
+                    tempPins: tempPins
                 )
                 .ignoresSafeArea(.all)
                 .onTapGesture {
@@ -397,7 +401,17 @@ struct SingleScreenMapView: View {
                     isPresented: .init(
                         get: { activeSheet != nil },
                         set: { if !$0 { activeSheet = nil } }
-                    )
+                    ),
+                    onPredictionRequested: {
+                        // Add purple AI prediction pin when user requests prediction
+                        // Only add if not already present at this location
+                        if !tempPins.contains(where: {
+                            abs($0.coordinate.latitude - place.coordinate.latitude) < 0.00001 &&
+                            abs($0.coordinate.longitude - place.coordinate.longitude) < 0.00001
+                        }) {
+                            tempPins.append(place)
+                        }
+                    }
                 )
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
