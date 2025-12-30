@@ -62,6 +62,19 @@ struct NativeBottomSheetContent: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
 
+            // Hint to swipe up - only show when collapsed
+            if isCollapsed {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 10, weight: .medium))
+                    Text("More options")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(.hushTertiaryText)
+                .padding(.top, 4)
+                .accessibilityLabel("Swipe up for more options")
+            }
+
             // Quick access buttons - only show when expanded
             if !isCollapsed {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
