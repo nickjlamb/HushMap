@@ -9,7 +9,9 @@ enum SingleScreenMapSheet: Identifiable, Equatable {
     case locationReport(ReportPin)
     case profile
     case mapStylePicker
-    
+    case communityStats
+    case placePrediction(PlaceDetails)
+
     var id: String {
         switch self {
         case .addReport: return "addReport"
@@ -17,19 +19,25 @@ enum SingleScreenMapSheet: Identifiable, Equatable {
         case .locationReport(let pin): return "locationReport-\(pin.id)"
         case .profile: return "profile"
         case .mapStylePicker: return "mapStylePicker"
+        case .communityStats: return "communityStats"
+        case .placePrediction(let place): return "placePrediction-\(place.name)"
         }
     }
-    
+
     static func == (lhs: SingleScreenMapSheet, rhs: SingleScreenMapSheet) -> Bool {
         switch (lhs, rhs) {
-        case (.nearby, .nearby), (.profile, .profile), (.mapStylePicker, .mapStylePicker):
+        case (.nearby, .nearby), (.profile, .profile), (.mapStylePicker, .mapStylePicker), (.communityStats, .communityStats):
             return true
         case (.addReport(let coord1, let name1), .addReport(let coord2, let name2)):
-            return coord1?.latitude == coord2?.latitude && 
-                   coord1?.longitude == coord2?.longitude && 
+            return coord1?.latitude == coord2?.latitude &&
+                   coord1?.longitude == coord2?.longitude &&
                    name1 == name2
         case (.locationReport(let pin1), .locationReport(let pin2)):
             return pin1.id == pin2.id
+        case (.placePrediction(let p1), .placePrediction(let p2)):
+            return p1.name == p2.name &&
+                   p1.coordinate.latitude == p2.coordinate.latitude &&
+                   p1.coordinate.longitude == p2.coordinate.longitude
         default:
             return false
         }
@@ -85,8 +93,12 @@ struct SingleScreenMapView: View {
     // Location service for proximity filtering
     @StateObject private var locationManager = LocationManager()
 
+    // Location resolver for populating displayName on reports
+    @StateObject private var locationResolver = ReportLocationResolver()
+
     // Community stats
     @State private var worldwideReportCount: Int?
+    @State private var communityStats: CommunityStats?
 
     // Find current user in SwiftData based on authentication
     private var currentSwiftDataUser: User? {
@@ -231,6 +243,11 @@ struct SingleScreenMapView: View {
                     onPinTapped: { pin in
                         selectedPin = pin
                         activeSheet = .locationReport(pin)
+                    },
+                    onPOITap: { placeID, name, location in
+                        // When user taps a Google Maps POI, show place prediction view
+                        let place = PlaceDetails(name: name, address: "", coordinate: location)
+                        activeSheet = .placePrediction(place)
                     }
                 )
                 .ignoresSafeArea(.all)
@@ -267,12 +284,18 @@ struct SingleScreenMapView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                // Community Stats Badge - Bottom Left
+                // Community Stats Badge - Bottom Left (tappable)
                 VStack {
                     Spacer()
                     HStack(alignment: .bottom) {
                         if let count = worldwideReportCount {
                             communityStatsBadge(count: count)
+                                .onTapGesture {
+                                    // Only show stats if we have computed them
+                                    if communityStats != nil {
+                                        activeSheet = .communityStats
+                                    }
+                                }
                         }
 
                         Spacer()
@@ -280,7 +303,6 @@ struct SingleScreenMapView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 200) // Above bottom sheet
                 }
-                .allowsHitTesting(false) // Don't block map interaction
                 .zIndex(1)
 
                 // Native bottom sheet will be presented via .sheet() modifier below
@@ -289,6 +311,14 @@ struct SingleScreenMapView: View {
         .task {
             // Fetch worldwide count when view appears
             await fetchWorldwideReportCount()
+
+            // Resolve locations for reports that don't have displayName
+            // This runs in background and updates SwiftData, triggering UI refresh
+            let reportsNeedingResolution = allReports.filter { $0.displayName == nil }
+            if !reportsNeedingResolution.isEmpty {
+                print("📍 Resolving locations for \(reportsNeedingResolution.count) reports without displayName")
+                await locationResolver.resolveLocationsForReports(reportsNeedingResolution)
+            }
 
             // Refresh count every 2 minutes to catch new reports
             while !Task.isCancelled {
@@ -355,6 +385,22 @@ struct SingleScreenMapView: View {
                         set: { _ in activeSheet = nil }
                     )
                 )
+            case .communityStats:
+                if let stats = communityStats {
+                    CommunityStatsView(stats: stats)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
+            case .placePrediction(let place):
+                PlacePredictionView(
+                    place: place,
+                    isPresented: .init(
+                        get: { activeSheet != nil },
+                        set: { if !$0 { activeSheet = nil } }
+                    )
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
             }
         }
         .sheet(isPresented: $showBottomSheet) {
@@ -520,12 +566,17 @@ struct SingleScreenMapView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(count.formatted())")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                Text("shared experiences")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                // Chevron as subtle disclosure indicator
+                HStack(spacing: 3) {
+                    Text("shared experiences")
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                }
+                .font(.system(size: 11, design: .rounded))
+                .foregroundColor(.secondary)
             }
         }
         .padding(.horizontal, 14)
@@ -539,6 +590,12 @@ struct SingleScreenMapView: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        // Accessibility: indicate this is a tappable element
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(count.formatted()) shared experiences")
+        .accessibilityHint("Shows community overview and statistics")
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Fetch Worldwide Count
@@ -549,6 +606,8 @@ struct SingleScreenMapView: View {
             let firestoreReports = try await FirestoreService.shared.downloadAllReports()
             await MainActor.run {
                 worldwideReportCount = firestoreReports.count
+                // Compute community stats for the expanded view
+                communityStats = CommunityStats.from(reports: firestoreReports)
                 print("🌍 ✅ Fetched \(firestoreReports.count) reports worldwide")
             }
         } catch {

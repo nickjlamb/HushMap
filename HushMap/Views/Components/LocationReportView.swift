@@ -77,7 +77,7 @@ struct LocationReportView: View {
                 .shadow(color: pin.qualityColor.opacity(0.3), radius: 8, x: 0, y: 4)
             
             VStack(spacing: 4) {
-                Text(pin.displayName ?? "Unknown Location")
+                Text(pin.friendlyDisplayName)
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.hushPrimaryText)

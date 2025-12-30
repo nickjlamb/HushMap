@@ -283,7 +283,7 @@ struct AboutView: View {
                 HStack {
                     Spacer()
                     VStack {
-                        Text("HushMap v1.6.0 (13)")
+                        Text("HushMap v1.7.0 (14)")
                             .font(.caption)
                             .foregroundColor(textColor.opacity(0.6))
                         Text("© 2025 PharmaTools.AI")

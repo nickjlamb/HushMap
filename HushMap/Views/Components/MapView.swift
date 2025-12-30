@@ -18,6 +18,9 @@ struct MapView: UIViewRepresentable {
     
     // Pin tap callback
     let onPinTapped: ((ReportPin) -> Void)?
+
+    // POI tap callback (placeID, name, coordinate)
+    let onPOITap: ((String, String, CLLocationCoordinate2D) -> Void)?
     
     @State private var cameraPosition: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
     @State private var tempPin: PlaceDetails?
@@ -358,8 +361,10 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
             // User tapped on a Google Maps POI (business/place)
             print("POI tapped: \(name) with placeID: \(placeID)")
-            
-            // This could trigger showing place details in bottom sheet
+
+            // Notify parent view about POI tap
+            parent.onPOITap?(placeID, name, location)
+
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
         }
