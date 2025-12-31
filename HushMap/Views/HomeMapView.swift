@@ -12,7 +12,8 @@ enum HomeMapSheet: Identifiable, Equatable {
     case placePrediction(PlaceDetails)
     case mapTapPrediction(PlaceDetails)
     case pinDetail(ReportPin)
-    
+    case addReport(CLLocationCoordinate2D?, String?)
+
     var id: String {
         switch self {
         case .about: return "about"
@@ -20,9 +21,14 @@ enum HomeMapSheet: Identifiable, Equatable {
         case .placePrediction(let place): return "placePrediction-\(place.name)-\(place.coordinate.latitude)-\(place.coordinate.longitude)"
         case .mapTapPrediction(let place): return "mapTapPrediction-\(place.name)-\(place.coordinate.latitude)-\(place.coordinate.longitude)"
         case .pinDetail(let pin): return "pinDetail-\(pin.id)"
+        case .addReport(let coord, _):
+            if let coord = coord {
+                return "addReport-\(coord.latitude)-\(coord.longitude)"
+            }
+            return "addReport"
         }
     }
-    
+
     static func == (lhs: HomeMapSheet, rhs: HomeMapSheet) -> Bool {
         switch (lhs, rhs) {
         case (.about, .about), (.placeSearch, .placeSearch):
@@ -33,6 +39,8 @@ enum HomeMapSheet: Identifiable, Equatable {
             return place1.name == place2.name && place1.coordinate.latitude == place2.coordinate.latitude && place1.coordinate.longitude == place2.coordinate.longitude
         case (.pinDetail(let pin1), (.pinDetail(let pin2))):
             return pin1.id == pin2.id
+        case (.addReport(let coord1, let name1), .addReport(let coord2, let name2)):
+            return coord1?.latitude == coord2?.latitude && coord1?.longitude == coord2?.longitude && name1 == name2
         default:
             return false
         }
@@ -319,7 +327,22 @@ struct HomeMapView: View {
                     )
                 )
             case .pinDetail(let pin):
-                PinDetailView(pin: pin)
+                PinDetailView(
+                    pin: pin,
+                    onAddReport: { coordinate, displayName in
+                        // Close pin detail sheet, then open AddReportView
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            activeSheet = .addReport(coordinate, displayName)
+                        }
+                    }
+                )
+            case .addReport(let location, let locationName):
+                if let location = location {
+                    AddReportView(location: location, locationName: locationName)
+                } else {
+                    AddReportView()
+                }
             }
         }
         .onChange(of: [maxNoiseThreshold, maxCrowdThreshold, maxLightingThreshold]) { _, _ in
@@ -987,12 +1010,36 @@ struct ThresholdSliderView: View {
 
 struct PinDetailView: View {
     let pin: ReportPin
+    let onAddReport: ((CLLocationCoordinate2D, String?) -> Void)?
     @Environment(\.dismiss) private var dismiss
-    
+
+    // Default initializer for backward compatibility
+    init(pin: ReportPin) {
+        self.pin = pin
+        self.onAddReport = nil
+    }
+
+    // Initializer with callback for Quick Update and Log Full Visit
+    init(pin: ReportPin, onAddReport: @escaping (CLLocationCoordinate2D, String?) -> Void) {
+        self.pin = pin
+        self.onAddReport = onAddReport
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Quick Update section at the top
+                    if let onAddReport = onAddReport {
+                        QuickUpdateView(
+                            coordinate: pin.coordinate,
+                            displayName: pin.displayName,
+                            onLogFullVisit: {
+                                onAddReport(pin.coordinate, pin.displayName)
+                            }
+                        )
+                    }
+
                     // Header
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {

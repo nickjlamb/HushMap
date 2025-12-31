@@ -8,6 +8,7 @@ class FirestoreService {
 
     private let db = Firestore.firestore()
     private let reportsCollection = "reports"
+    private let quickUpdatesCollection = "quickUpdates"
 
     private init() {}
 
@@ -104,6 +105,25 @@ class FirestoreService {
 
                 completion(reports)
             }
+    }
+
+    // MARK: - Quick Update Syncing
+
+    /// Upload a quick update to Firestore
+    func uploadQuickUpdate(_ update: QuickUpdate) async throws {
+        let updateData: [String: Any] = [
+            "id": update.id.uuidString,
+            "placeId": update.placeId,
+            "quietState": update.quietStateRaw,
+            "latitude": update.latitude,
+            "longitude": update.longitude,
+            "timestamp": Timestamp(date: update.timestamp),
+            "userId": update.userId as Any,
+            "anonymousId": update.anonymousId as Any,
+            "displayName": update.displayName as Any
+        ]
+
+        try await db.collection(quickUpdatesCollection).document(update.id.uuidString).setData(updateData)
     }
 
     // MARK: - Helper Methods

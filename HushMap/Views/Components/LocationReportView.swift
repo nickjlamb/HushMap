@@ -32,18 +32,29 @@ struct LocationReportView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Quick Update section at the top (only if callback is available)
+                    if let onAddReport = onAddReport {
+                        QuickUpdateView(
+                            coordinate: pin.coordinate,
+                            displayName: pin.displayName,
+                            onLogFullVisit: {
+                                onAddReport(pin.coordinate, pin.displayName)
+                            }
+                        )
+                    }
+
                     // Header section
                     headerSection
-                    
+
                     // Quality overview
                     qualityOverviewSection
-                    
+
                     // Detailed metrics
                     metricsSection
-                    
+
                     // Report information
                     reportInfoSection
-                    
+
                     // Action buttons
                     actionButtonsSection
                 }

@@ -14,6 +14,14 @@ enum DisplayTier: String, Codable, CaseIterable {
     case area = "area"
 }
 
+// MARK: - Report Model
+
+/// A sensory environment report for a location.
+///
+/// Reports may be derived from Quick Updates or Apple Watch interactions
+/// and may not represent full user-authored visit logs. Derived reports
+/// use sensory values computed from simple quiet/noisy input rather than
+/// explicit slider values from the user.
 @Model
 class Report {
     @Attribute(.unique) var id: UUID = UUID()

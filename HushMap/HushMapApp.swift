@@ -46,7 +46,8 @@ struct HushMapApp: App {
             Report.self,
             User.self,
             Badge.self,
-            SensoryProfile.self
+            SensoryProfile.self,
+            QuickUpdate.self
         ])
         
         // First try with default migration
