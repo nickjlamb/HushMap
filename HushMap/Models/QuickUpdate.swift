@@ -10,6 +10,47 @@ enum QuietState: String, Codable {
     case noisy = "noisy"
 }
 
+// MARK: - Recency Configuration
+
+/// Configuration for determining "recent" quick updates
+enum QuickUpdateRecency {
+    /// Window in seconds for considering an update "recent" (90 minutes)
+    static let recentWindowSeconds: TimeInterval = 90 * 60
+
+    /// Check if a timestamp is within the recent window
+    static func isRecent(_ timestamp: Date) -> Bool {
+        let cutoff = Date().addingTimeInterval(-recentWindowSeconds)
+        return timestamp > cutoff
+    }
+}
+
+// MARK: - Recent Quick Update Info
+
+/// Lightweight struct for displaying recent quick update status on pins and detail views.
+/// Does not retain the full QuickUpdate model to avoid memory overhead.
+struct RecentQuickUpdateInfo {
+    let quietState: QuietState
+    let timestamp: Date
+
+    /// Whether this update is still within the "recent" window
+    var isRecent: Bool {
+        QuickUpdateRecency.isRecent(timestamp)
+    }
+
+    /// Human-readable relative time (e.g., "12 min ago")
+    var relativeTimeText: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: timestamp, relativeTo: Date())
+    }
+
+    /// Display text for the status badge (e.g., "Quiet · 12 min ago")
+    var statusText: String {
+        let stateText = quietState == .quiet ? "Quiet" : "Noisy"
+        return "\(stateText) · \(relativeTimeText)"
+    }
+}
+
 // MARK: - QuickUpdate Model
 
 /// Lightweight data model for fast, one-tap sensory updates.

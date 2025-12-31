@@ -82,6 +82,7 @@ struct SingleScreenMapView: View {
     // Data queries
     @Query private var allReports: [Report]
     @Query private var users: [User]
+    @Environment(\.modelContext) private var modelContext
     
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
@@ -183,9 +184,12 @@ struct SingleScreenMapView: View {
     
     // Convert filtered reports to ReportPins for map display
     private var reportPins: [ReportPin] {
+        // Fetch recent quick updates once (batch lookup)
+        let recentQuickUpdates = QuickUpdateService.shared.recentUpdatesForPlaces(modelContext: modelContext)
+
         // Group reports by location (using locationIdentifier)
         let groupedReports = Dictionary(grouping: filteredReports) { $0.locationIdentifier }
-        
+
         return groupedReports.compactMap { (locationId, reports) in
             guard let firstReport = reports.first else { return nil }
 
@@ -205,6 +209,9 @@ struct SingleScreenMapView: View {
                 contributorName = mostRecentReport.submittedByUserName ?? "You"
             }
 
+            // Look up recent quick update for this location
+            let quickUpdateInfo = recentQuickUpdates[locationId]
+
             return ReportPin(
                 coordinate: firstReport.coordinate,
                 displayName: firstReport.displayName,
@@ -217,7 +224,8 @@ struct SingleScreenMapView: View {
                 averageQuietScore: averageQuietScore,
                 latestTimestamp: latestTimestamp,
                 submittedByUserName: contributorName,
-                submittedByUserProfileImageURL: reports.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil
+                submittedByUserProfileImageURL: reports.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil,
+                recentQuickUpdate: quickUpdateInfo
             )
         }
     }

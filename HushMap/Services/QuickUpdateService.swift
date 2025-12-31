@@ -206,6 +206,59 @@ class QuickUpdateService {
         return (try? modelContext.fetch(descriptor))?.first
     }
 
+    // MARK: - Batch Lookup for Map Pins
+
+    /// Batch lookup of recent quick updates for multiple place IDs.
+    /// Returns a dictionary mapping placeId to RecentQuickUpdateInfo for places
+    /// with recent updates. Places without recent updates are not included.
+    ///
+    /// This is optimized for map pin display - fetches all recent updates in one query
+    /// and groups by placeId to avoid N+1 queries.
+    func recentUpdatesForPlaces(modelContext: ModelContext) -> [String: RecentQuickUpdateInfo] {
+        // Fetch all quick updates within the recency window
+        let cutoff = Date().addingTimeInterval(-QuickUpdateRecency.recentWindowSeconds)
+
+        let descriptor = FetchDescriptor<QuickUpdate>(
+            predicate: #Predicate<QuickUpdate> { update in
+                update.timestamp > cutoff
+            },
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+
+        guard let recentUpdates = try? modelContext.fetch(descriptor) else {
+            return [:]
+        }
+
+        // Group by placeId, keeping only the most recent for each place
+        var result: [String: RecentQuickUpdateInfo] = [:]
+
+        for update in recentUpdates {
+            // Only keep the first (most recent) update for each place
+            if result[update.placeId] == nil {
+                result[update.placeId] = RecentQuickUpdateInfo(
+                    quietState: update.quietState,
+                    timestamp: update.timestamp
+                )
+            }
+        }
+
+        return result
+    }
+
+    /// Get recent quick update info for a specific place (for detail views).
+    /// Returns nil if no recent update exists.
+    func recentUpdateInfo(for placeId: String, modelContext: ModelContext) -> RecentQuickUpdateInfo? {
+        guard let update = latestUpdate(for: placeId, modelContext: modelContext),
+              QuickUpdateRecency.isRecent(update.timestamp) else {
+            return nil
+        }
+
+        return RecentQuickUpdateInfo(
+            quietState: update.quietState,
+            timestamp: update.timestamp
+        )
+    }
+
     // MARK: - Cloud Sync
 
     /// Sync a quick update to Firestore

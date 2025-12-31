@@ -43,6 +43,11 @@ struct LocationReportView: View {
                         )
                     }
 
+                    // Recent quick update status badge
+                    if let quickUpdate = pin.recentQuickUpdate, quickUpdate.isRecent {
+                        RecentQuickUpdateBadge(info: quickUpdate)
+                    }
+
                     // Header section
                     headerSection
 
@@ -379,7 +384,8 @@ struct MetricCard: View {
             averageQuietScore: 75,
             latestTimestamp: Date(),
             submittedByUserName: "Sarah Johnson",
-            submittedByUserProfileImageURL: nil
+            submittedByUserProfileImageURL: nil,
+            recentQuickUpdate: RecentQuickUpdateInfo(quietState: .quiet, timestamp: Date().addingTimeInterval(-600))
         )
     )
 }

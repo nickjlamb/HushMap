@@ -656,6 +656,9 @@ struct HomeMapView: View {
 
         lastReportsHash = currentHash
 
+        // Fetch recent quick updates once (batch lookup to avoid N+1 queries)
+        let recentQuickUpdates = QuickUpdateService.shared.recentUpdatesForPlaces(modelContext: modelContext)
+
         // Filter reports based on user criteria
         let filtered = reports.filter { report in
             // Date filter
@@ -679,7 +682,7 @@ struct HomeMapView: View {
             // Group by location identifier and create one pin per location
             let groupedReports = Dictionary(grouping: filtered) { $0.locationIdentifier }
 
-            for (_, reportsAtLocation) in groupedReports {
+            for (locationId, reportsAtLocation) in groupedReports {
                 if let representativeReport = reportsAtLocation.first {
                     // Calculate average sensory levels
                     let avgNoise = reportsAtLocation.map { $0.noise }.reduce(0, +) / Double(reportsAtLocation.count)
@@ -702,6 +705,9 @@ struct HomeMapView: View {
                         contributorName = mostRecentReport.submittedByUserName ?? "You"
                     }
 
+                    // Look up recent quick update for this location
+                    let quickUpdateInfo = recentQuickUpdates[locationId]
+
                     let pin = ReportPin(
                         coordinate: representativeReport.coordinate,
                         displayName: displayName,
@@ -714,7 +720,8 @@ struct HomeMapView: View {
                         averageQuietScore: avgQuietScore,
                         latestTimestamp: mostRecentReport.timestamp,
                         submittedByUserName: contributorName,
-                        submittedByUserProfileImageURL: reportsAtLocation.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil
+                        submittedByUserProfileImageURL: reportsAtLocation.count == 1 ? mostRecentReport.submittedByUserProfileImageURL : nil,
+                        recentQuickUpdate: quickUpdateInfo
                     )
                     pins.append(pin)
                 }
@@ -722,7 +729,11 @@ struct HomeMapView: View {
         } else {
             // Create individual pins for each report
             pins = filtered.map { report in
-                ReportPin(
+                // Look up recent quick update for this location
+                let locationId = report.locationIdentifier
+                let quickUpdateInfo = recentQuickUpdates[locationId]
+
+                return ReportPin(
                     coordinate: report.coordinate,
                     displayName: report.displayName,
                     displayTier: report.displayTier,
@@ -734,7 +745,8 @@ struct HomeMapView: View {
                     averageQuietScore: report.quietScore,
                     latestTimestamp: report.timestamp,
                     submittedByUserName: report.submittedByUserName ?? "You",
-                    submittedByUserProfileImageURL: report.submittedByUserProfileImageURL
+                    submittedByUserProfileImageURL: report.submittedByUserProfileImageURL,
+                    recentQuickUpdate: quickUpdateInfo
                 )
             }
         }
@@ -835,6 +847,17 @@ struct ReportPin: Identifiable {
     let latestTimestamp: Date
     let submittedByUserName: String? // Who submitted this report
     let submittedByUserProfileImageURL: String? // User profile image
+    let recentQuickUpdate: RecentQuickUpdateInfo? // Recent "quiet now" / "noisy now" status
+
+    /// Location identifier for matching with QuickUpdates
+    var locationIdentifier: String {
+        QuickUpdate.locationIdentifier(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+
+    /// Whether this pin has a recent quick update
+    var hasRecentQuickUpdate: Bool {
+        recentQuickUpdate?.isRecent ?? false
+    }
 
     var averageSensoryLevel: Double {
         (averageNoise + averageCrowds + averageLighting) / 3.0
@@ -906,14 +929,32 @@ struct ReportPin: Identifiable {
 struct ReportPinView: View {
     let pin: ReportPin
 
+    /// Color for the "recent quick update" glow indicator
+    private var recentUpdateGlowColor: Color? {
+        guard let quickUpdate = pin.recentQuickUpdate, quickUpdate.isRecent else {
+            return nil
+        }
+        return quickUpdate.quietState == .quiet
+            ? Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.6)  // Soft green
+            : Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.6)  // Muted orange
+    }
+
     var body: some View {
         ZStack {
+            // Recent quick update glow (outer ring) - only shown for places with recent updates
+            if let glowColor = recentUpdateGlowColor {
+                Circle()
+                    .fill(glowColor)
+                    .frame(width: 44, height: 44)
+                    .blur(radius: 4)
+            }
+
             // Drop shadow circle
             Circle()
                 .fill(Color.black.opacity(0.3))
                 .frame(width: 34, height: 34)
                 .offset(x: 1, y: 2)
-            
+
             // Main pin body
             Circle()
                 .fill(pin.qualityColor)
@@ -926,7 +967,7 @@ struct ReportPinView: View {
                     Circle()
                         .stroke(Color.black.opacity(0.2), lineWidth: 1)
                 )
-            
+
             // Inner content
             if pin.reportCount > 1 {
                 Text("\(pin.reportCount)")
@@ -944,6 +985,49 @@ struct ReportPinView: View {
         }
         .scaleEffect(pin.reportCount > 1 ? 1.1 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: pin.reportCount)
+    }
+}
+
+// MARK: - Recent Quick Update Badge
+
+/// A calm, non-intrusive badge showing recent quick update status.
+/// Displays "Quiet · 12 min ago" or "Noisy · 5 min ago" for places with recent updates.
+struct RecentQuickUpdateBadge: View {
+    let info: RecentQuickUpdateInfo
+
+    private var iconName: String {
+        info.quietState == .quiet ? "speaker.slash.fill" : "speaker.wave.2.fill"
+    }
+
+    private var stateColor: Color {
+        info.quietState == .quiet
+            ? Color(red: 0.2, green: 0.7, blue: 0.4)  // Soft green
+            : Color(red: 0.9, green: 0.5, blue: 0.3)  // Muted orange
+    }
+
+    private var backgroundColor: Color {
+        info.quietState == .quiet
+            ? Color(red: 0.2, green: 0.7, blue: 0.4).opacity(0.12)
+            : Color(red: 0.9, green: 0.5, blue: 0.3).opacity(0.12)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName)
+                .font(.subheadline)
+                .foregroundColor(stateColor)
+
+            Text(info.statusText)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(stateColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(backgroundColor)
+        .cornerRadius(8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(info.quietState == .quiet ? "This place was reported as quiet \(info.relativeTimeText)" : "This place was reported as noisy \(info.relativeTimeText)")
     }
 }
 
@@ -1038,6 +1122,11 @@ struct PinDetailView: View {
                                 onAddReport(pin.coordinate, pin.displayName)
                             }
                         )
+                    }
+
+                    // Recent quick update status badge
+                    if let quickUpdate = pin.recentQuickUpdate, quickUpdate.isRecent {
+                        RecentQuickUpdateBadge(info: quickUpdate)
                     }
 
                     // Header
