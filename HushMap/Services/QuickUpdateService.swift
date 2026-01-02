@@ -3,6 +3,11 @@ import SwiftData
 import CoreLocation
 import UIKit
 
+/// Notification posted when a quick update is submitted, allowing map views to refresh immediately.
+extension Notification.Name {
+    static let quickUpdateSubmitted = Notification.Name("HushMap.quickUpdateSubmitted")
+}
+
 /// Service for managing quick sensory updates.
 /// Follows the existing singleton pattern used throughout the app.
 @MainActor
@@ -76,6 +81,9 @@ class QuickUpdateService {
         modelContext.insert(report)
 
         try modelContext.save()
+
+        // Post notification to trigger immediate map refresh
+        NotificationCenter.default.post(name: .quickUpdateSubmitted, object: nil)
 
         // Sync both to Firestore asynchronously (fire and forget)
         Task {

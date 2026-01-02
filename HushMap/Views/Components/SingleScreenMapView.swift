@@ -286,10 +286,14 @@ struct SingleScreenMapView: View {
                             )
                             .padding(.horizontal, 16)
                             .padding(.top, geometry.safeAreaInsets.top + 80)
-                            
+
                             Spacer()
                         }
-                        
+
+                        // Quiet nearby nudge - subtle indicator below search bar
+                        QuietNearbyNudge(pins: reportPins)
+                            .padding(.top, 8)
+
                         Spacer()
                     }
                     .zIndex(2)

@@ -187,6 +187,17 @@ struct HomeMapView: View {
                         currentCoordinate = coordinate
                     }
                 }
+
+                // Listen for quick update submissions to refresh pins immediately (for recency indicator)
+                NotificationCenter.default.addObserver(
+                    forName: .quickUpdateSubmitted,
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    // Force refresh to show the recency stroke on updated pins
+                    lastReportsHash = 0  // Reset hash to force update
+                    loadReportsAsync()
+                }
             }
             .onReceive(locationManager.$lastLocation) { newLocation in
                 // Only update map position ONCE when user location first becomes available
@@ -215,6 +226,13 @@ struct HomeMapView: View {
 
                 // Clean up notification observer to prevent memory leak
                 NotificationCenter.default.removeObserver(self, name: Notification.Name("CenterMapOnCoordinate"), object: nil)
+            }
+
+            // Quiet nearby nudge - subtle overlay at top
+            VStack {
+                QuietNearbyNudge(pins: cachedPins)
+                    .padding(.top, 60)
+                Spacer()
             }
 
             // Map Legend and Community Stats - ALWAYS VISIBLE FOR TESTING
@@ -381,6 +399,9 @@ struct HomeMapView: View {
                 if self.reports.count != fetchedReports.count {
                     self.reports = fetchedReports
                     self.scheduleUpdateFilteredPins(delay: .milliseconds(500))
+                } else {
+                    // Force update even if count unchanged (quick updates need recency refresh)
+                    self.scheduleUpdateFilteredPins(delay: .milliseconds(100))
                 }
                 self.isLoadingReports = false
             } catch {
@@ -652,6 +673,7 @@ struct HomeMapView: View {
     // Immediate update without debouncing
     private func updateFilteredPinsNow() {
         let currentHash = computeFilterHash()
+
         guard currentHash != lastReportsHash else { return }
 
         lastReportsHash = currentHash
@@ -929,26 +951,18 @@ struct ReportPin: Identifiable {
 struct ReportPinView: View {
     let pin: ReportPin
 
-    /// Color for the "recent quick update" glow indicator
-    private var recentUpdateGlowColor: Color? {
+    /// Color for the "recent quick update" stroke indicator
+    private var recencyStrokeColor: Color? {
         guard let quickUpdate = pin.recentQuickUpdate, quickUpdate.isRecent else {
             return nil
         }
         return quickUpdate.quietState == .quiet
-            ? Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.6)  // Soft green
-            : Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.6)  // Muted orange
+            ? Color(red: 0.36, green: 0.66, blue: 0.49)  // Muted green
+            : Color(red: 0.83, green: 0.52, blue: 0.35)  // Muted orange
     }
 
     var body: some View {
         ZStack {
-            // Recent quick update glow (outer ring) - only shown for places with recent updates
-            if let glowColor = recentUpdateGlowColor {
-                Circle()
-                    .fill(glowColor)
-                    .frame(width: 44, height: 44)
-                    .blur(radius: 4)
-            }
-
             // Drop shadow circle
             Circle()
                 .fill(Color.black.opacity(0.3))
@@ -966,6 +980,16 @@ struct ReportPinView: View {
                 .overlay(
                     Circle()
                         .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                )
+                .overlay(
+                    // Recency stroke - thin outer ring for recent quick updates
+                    Group {
+                        if let strokeColor = recencyStrokeColor {
+                            Circle()
+                                .stroke(strokeColor, lineWidth: 2)
+                                .frame(width: 38, height: 38)
+                        }
+                    }
                 )
 
             // Inner content

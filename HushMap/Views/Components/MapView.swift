@@ -142,15 +142,31 @@ struct MapView: UIViewRepresentable {
                 }
             }
 
-            // Check if any pin IDs or coordinates changed
+            // Check if any pin IDs, coordinates, or quick update status changed
             for (index, pin) in pins.enumerated() {
-                guard index < currentPins.count else { return true }
+                guard index < currentPins.count else {
+                    return true
+                }
                 let currentPin = currentPins[index]
 
                 if pin.id != currentPin.id ||
                    abs(pin.coordinate.latitude - currentPin.coordinate.latitude) > 0.00001 ||
                    abs(pin.coordinate.longitude - currentPin.coordinate.longitude) > 0.00001 {
                     return true
+                }
+
+                // Check if quick update status changed (for recency indicator)
+                let pinHasQuickUpdate = pin.recentQuickUpdate?.isRecent ?? false
+                let currentPinHasQuickUpdate = currentPin.recentQuickUpdate?.isRecent ?? false
+                if pinHasQuickUpdate != currentPinHasQuickUpdate {
+                    return true
+                }
+
+                // Also check if the quick update state changed (quiet vs noisy)
+                if let pinUpdate = pin.recentQuickUpdate, let currentUpdate = currentPin.recentQuickUpdate {
+                    if pinUpdate.quietState != currentUpdate.quietState {
+                        return true
+                    }
                 }
             }
 
@@ -188,7 +204,8 @@ struct MapView: UIViewRepresentable {
                     accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                         for: status,
                         location: pin.displayName
-                    )
+                    ),
+                    recentQuickUpdate: pin.recentQuickUpdate
                 )
 
                 // Get current interface style and zoom
@@ -317,22 +334,23 @@ struct MapView: UIViewRepresentable {
                     accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                         for: status,
                         location: pin.displayName
-                    )
+                    ),
+                    recentQuickUpdate: pin.recentQuickUpdate
                 )
-                
+
                 // Apply selected state with current zoom and interface style
                 let interfaceStyle = UITraitCollection.current.userInterfaceStyle
                 let currentZoom = mapView.camera.zoom
                 MarkerProvider.shared.applyIcon(to: marker, config: selectedConfig, cameraZoom: currentZoom, interfaceStyle: interfaceStyle)
                 MarkerProvider.shared.animateSelection(for: marker)
-                
+
                 // Handle pin tap - trigger callback to show report details
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.impactOccurred()
-                
+
                 // Notify parent view about pin tap
                 parent.onPinTapped?(pin)
-                
+
                 // Reset to normal state after a delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     let normalConfig = MarkerConfig(
@@ -341,9 +359,10 @@ struct MapView: UIViewRepresentable {
                         accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                             for: status,
                             location: pin.displayName
-                        )
+                        ),
+                        recentQuickUpdate: pin.recentQuickUpdate
                     )
-                    
+
                     // Reset to normal state with current zoom and interface style
                     let interfaceStyle = UITraitCollection.current.userInterfaceStyle
                     let currentZoom = mapView.camera.zoom

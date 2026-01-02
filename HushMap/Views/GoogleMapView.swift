@@ -84,9 +84,10 @@ struct GoogleMapView: UIViewRepresentable {
                 accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                     for: status,
                     location: pin.displayName
-                )
+                ),
+                recentQuickUpdate: pin.recentQuickUpdate
             )
-            
+
             // Get current interface style and zoom
             let interfaceStyle = UITraitCollection.current.userInterfaceStyle
             let currentZoom = mapView.camera.zoom
@@ -246,15 +247,31 @@ struct GoogleMapView: UIViewRepresentable {
                 }
             }
 
-            // Check if any pin IDs or coordinates changed
+            // Check if any pin IDs, coordinates, or quick update status changed
             for (index, pin) in pins.enumerated() {
-                guard index < currentPins.count else { return true }
+                guard index < currentPins.count else {
+                    return true
+                }
                 let currentPin = currentPins[index]
 
                 if pin.id != currentPin.id ||
                    abs(pin.coordinate.latitude - currentPin.coordinate.latitude) > 0.00001 ||
                    abs(pin.coordinate.longitude - currentPin.coordinate.longitude) > 0.00001 {
                     return true
+                }
+
+                // Check if quick update status changed (for recency indicator)
+                let pinHasQuickUpdate = pin.recentQuickUpdate?.isRecent ?? false
+                let currentPinHasQuickUpdate = currentPin.recentQuickUpdate?.isRecent ?? false
+                if pinHasQuickUpdate != currentPinHasQuickUpdate {
+                    return true
+                }
+
+                // Also check if the quick update state changed (quiet vs noisy)
+                if let pinUpdate = pin.recentQuickUpdate, let currentUpdate = currentPin.recentQuickUpdate {
+                    if pinUpdate.quietState != currentUpdate.quietState {
+                        return true
+                    }
                 }
             }
 
@@ -292,7 +309,8 @@ struct GoogleMapView: UIViewRepresentable {
                     accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                         for: status,
                         location: pin.displayName
-                    )
+                    ),
+                    recentQuickUpdate: pin.recentQuickUpdate
                 )
 
                 // Get current interface style and zoom
@@ -435,9 +453,10 @@ struct GoogleMapView: UIViewRepresentable {
                     accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                         for: status,
                         location: pin.displayName
-                    )
+                    ),
+                    recentQuickUpdate: pin.recentQuickUpdate
                 )
-                
+
                 // Apply selected state with current zoom and interface style
                 let interfaceStyle = UITraitCollection.current.userInterfaceStyle
                 let currentZoom = mapView.camera.zoom
@@ -454,9 +473,10 @@ struct GoogleMapView: UIViewRepresentable {
                         accessibilityLabel: MarkerProvider.shared.accessibilityLabel(
                             for: status,
                             location: pin.displayName
-                        )
+                        ),
+                        recentQuickUpdate: pin.recentQuickUpdate
                     )
-                    
+
                     // Reset to normal state with current zoom and interface style
                     let interfaceStyle = UITraitCollection.current.userInterfaceStyle
                     let currentZoom = mapView.camera.zoom

@@ -49,9 +49,9 @@ struct AddReportView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Image(systemName: "speaker.wave.3")
-                                        .foregroundColor(.hushBackground)
+                                        .foregroundColor(.primary.opacity(0.7))
                                         .frame(width: 20)
-                                    
+
                                     Text("Noise: \(Int(noiseLevel * 10))/10")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
@@ -119,7 +119,7 @@ struct AddReportView: View {
                             .padding(.vertical, 4)
                             
                             SliderWithLabel(title: "Crowds", value: $crowdLevel)
-                            SliderWithLabel(title: "Lighting", value: $lightingLevel)
+                            LightingSliderWithLabel(value: $lightingLevel)
                         }
                         
                         Section(header: Text("Your Experience")) {
@@ -364,7 +364,7 @@ struct AddReportView: View {
 struct SliderWithLabel: View {
     let title: String
     @Binding var value: Double
-    
+
     var iconName: String {
         switch title {
         case "Noise":
@@ -384,18 +384,74 @@ struct SliderWithLabel: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: iconName)
-                    .foregroundColor(.hushBackground)
+                    .foregroundColor(.primary.opacity(0.7))
                     .frame(width: 20)
-                
+
                 Text("\(title): \(Int(value * 10))/10")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
             }
-            
+
             Slider(value: $value, in: 0...1)
                 .tint(.hushBackground)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// Specialized slider for Lighting with visual scale indicators.
+/// Shows dim (moon) on left and bright (sun) on right to clarify the scale direction.
+struct LightingSliderWithLabel: View {
+    @Binding var value: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header row with icon and value
+            HStack {
+                Image(systemName: "lightbulb")
+                    .foregroundColor(.primary.opacity(0.7))
+                    .frame(width: 20)
+
+                Text("Lighting: \(Int(value * 10))/10")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Spacer()
+            }
+
+            // Slider with end indicators
+            HStack(spacing: 8) {
+                // Left end: Dim indicator
+                VStack(spacing: 2) {
+                    Image(systemName: "moon.fill")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                    Text("Dim")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+                .frame(width: 28)
+
+                // Slider
+                Slider(value: $value, in: 0...1)
+                    .tint(.hushBackground)
+                    .accessibilityLabel("Lighting level")
+                    .accessibilityValue("\(Int(value * 10)) out of 10")
+                    .accessibilityHint("Slide left for dim lighting, right for bright lighting")
+
+                // Right end: Bright indicator
+                VStack(spacing: 2) {
+                    Image(systemName: "sun.max.fill")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                    Text("Bright")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+                .frame(width: 28)
+            }
         }
         .padding(.vertical, 4)
     }

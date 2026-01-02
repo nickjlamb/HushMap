@@ -6,20 +6,34 @@ struct MarkerConfig {
     let status: ReportStatus
     let selected: Bool
     let accessibilityLabel: String
+    let recentQuickUpdate: RecentQuickUpdateInfo?
+
+    init(status: ReportStatus, selected: Bool, accessibilityLabel: String, recentQuickUpdate: RecentQuickUpdateInfo? = nil) {
+        self.status = status
+        self.selected = selected
+        self.accessibilityLabel = accessibilityLabel
+        self.recentQuickUpdate = recentQuickUpdate
+    }
 }
 
 // MARK: - Marker Provider
 final class MarkerProvider {
     static let shared = MarkerProvider()
-    
+
     private init() {}
     
     func applyIcon(to marker: GMSMarker, config: MarkerConfig, cameraZoom: Float = 15.0, interfaceStyle: UIUserInterfaceStyle = .light) {
-        if MarkerStyleConfig.mode == .googleDefault {
-            // Use Google's default marker with app colors
+        // Clear existing icon to ensure fresh render
+        marker.icon = nil
+        marker.iconView = nil
+
+        // Force custom markers when there's a recent quick update (needed for recency stroke)
+        let hasRecentQuickUpdate = config.recentQuickUpdate?.isRecent ?? false
+        let useCustomMarker = MarkerStyleConfig.mode != .googleDefault || hasRecentQuickUpdate
+
+        if !useCustomMarker {
             applyGoogleDefaultMarker(to: marker, status: config.status, selected: config.selected, accessibilityLabel: config.accessibilityLabel, traitEnvironment: UIScreen.main)
         } else {
-            // Use custom markers (existing logic)
             applyCustomMarker(to: marker, config: config, cameraZoom: cameraZoom, interfaceStyle: interfaceStyle)
         }
     }
@@ -44,38 +58,48 @@ final class MarkerProvider {
     private func applyCustomMarker(to marker: GMSMarker, config: MarkerConfig, cameraZoom: Float, interfaceStyle: UIUserInterfaceStyle) {
         let size: MarkerSize = config.selected ? .selected : .normal
         let zoomMultiplier = PinSizing.quantizedMultiplier(for: cameraZoom)
+
+        // Determine recency stroke based on quick update state
+        let recencyStroke: RecencyStroke
+        if let quickUpdate = config.recentQuickUpdate, quickUpdate.isRecent {
+            recencyStroke = quickUpdate.quietState == .quiet ? .quiet : .noisy
+        } else {
+            recencyStroke = .none
+        }
+
         let img = MarkerIconFactory.shared.image(
             for: config.status,
             size: size,
             selected: config.selected,
             scale: UIScreen.main.scale,
             zoomMultiplier: zoomMultiplier,
-            interfaceStyle: interfaceStyle
+            interfaceStyle: interfaceStyle,
+            recencyStroke: recencyStroke
         )
-        
+
         // Create improved tap target with 44x44pt hit area
         let tapTargetSize: CGFloat = 44
         let containerView = UIView(frame: CGRect(x: 0, y: 0, width: tapTargetSize, height: tapTargetSize))
         containerView.isUserInteractionEnabled = false
         containerView.backgroundColor = UIColor.clear
-        
+
         let imageView = UIImageView(image: img)
         imageView.contentMode = .center
         imageView.frame = containerView.bounds
         containerView.addSubview(imageView)
-        
+
         // Use iconView instead of icon for better tap targets
         marker.iconView = containerView
-        
+
         // Adjust ground anchor for the container - tip should still be at coordinate
         let imageHeight = img.size.height
         let containerHeight = tapTargetSize
         let anchorY = 1.0 - (containerHeight - imageHeight) / (2 * containerHeight)
         marker.groundAnchor = CGPoint(x: 0.5, y: anchorY)
-        
+
         // Selected markers appear higher with stronger pop
         marker.zIndex = config.selected ? 20 : 5
-        
+
         // Set up accessibility on the container
         containerView.isAccessibilityElement = true
         containerView.accessibilityLabel = config.accessibilityLabel
